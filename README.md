@@ -1,8 +1,8 @@
 -----------------------------------
 
-_DISCLAIMER:_
-
 Welcome to **Nikolaos Margaris Raylib Game**!
+
+[![Windows](https://github.com/margaris23/my-cpp-game/actions/workflows/windows.yml/badge.svg)](https://github.com/margaris23/my-cpp-game/actions/workflows/windows.yml) [![Linux](https://github.com/margaris23/my-cpp-game/actions/workflows/linux.yml/badge.svg)](https://github.com/margaris23/my-cpp-game/actions/workflows/linux.yml) [![WebAssembly](https://github.com/margaris23/my-cpp-game/actions/workflows/webassembly.yml/badge.svg)](https://github.com/margaris23/my-cpp-game/actions/workflows/webassembly.yml)
 
 ### How to build
 
