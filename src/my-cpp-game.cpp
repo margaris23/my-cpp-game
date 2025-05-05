@@ -2,6 +2,7 @@
 #include "scenes.h"
 #include <iostream>
 #include <ostream>
+#include "ecs.h"
 
 #if defined(PLATFORM_WEB)
 #include <emscripten/emscripten.h>
@@ -27,6 +28,7 @@ int main(void) {
 #else
   SetTargetFPS(60);
 
+  ECS::Init();
   LoadScene(Scene::INTRO);
 
   // Main game loop

@@ -3,21 +3,27 @@
 
 #include <climits>
 #include <cstddef>
+#include <iostream>
+#include <memory>
 #include <utility>
 #include <vector>
 
 namespace SparseSet {
+
 static constexpr int INITIAL_DENSE_SIZE = 10;
 static constexpr int INITIAL_ENTITIES = 10;
 static constexpr size_t EMPTY = ULONG_LONG_MAX - 1;
 
-class SparseSet {
+template <typename T> class SparseSet {
 public:
+  std::vector<size_t> sparse;
+  std::vector<T> dense;
+
   SparseSet(size_t initialNumOfEntities = INITIAL_ENTITIES) {
     if (initialNumOfEntities > sparse.capacity()) {
       sparse.resize(initialNumOfEntities, EMPTY);
     }
-    dense.resize(INITIAL_DENSE_SIZE, EMPTY);
+    dense.reserve(INITIAL_DENSE_SIZE);
   }
 
   ~SparseSet() {
@@ -25,38 +31,49 @@ public:
     dense.clear();
   }
 
-  void Add(size_t id) {
-    if (id < sparse.size()) {
-      dense[num_of_components] = id;
-      sparse[id] = num_of_components;
-      ++num_of_components;
-    }
+  bool contains(size_t id) const {
+    return id < sparse.size() && dense[sparse[id]].entity == id;
   }
 
-  size_t Get(size_t id) const {
+  // TODO: reuse and/or update
+  bool Add(size_t id, T &denseItem) {
+    if (!contains(id)) {
+      denseItem.entity = id;
+      sparse[id] = dense.size();
+      dense.push_back(denseItem);
+      return true;
+    }
+    return false;
+  }
+
+  std::unique_ptr<T> Get(size_t id) const {
     if (id < sparse.size()) {
       size_t denseIndex = sparse[id];
-      if (denseIndex != EMPTY && dense[denseIndex] == id) {
-        return id;
+      if (denseIndex != EMPTY && dense[denseIndex].entity == id) {
+        return std::make_unique<T>(dense[denseIndex]);
       }
     }
-    return EMPTY;
+    return nullptr;
   }
 
-  void Remove(size_t id) {
-    if (Get(id) != EMPTY) {
-      size_t index = sparse[id];
-      size_t prev = dense[num_of_components - 1];
-      std::swap(dense[num_of_components - 1], dense[index]);
-      sparse[id] = num_of_components + 1;
-      sparse[prev] = index;
-      --num_of_components;
+  // TODO: return bool for success removal
+  void Remove(size_t entity) {
+    if (contains(entity)) {
+      std::cout << "REMOVING: " << entity << "\n";
+      size_t index = sparse[entity];
+      std::swap(dense[dense.size() - 1], dense[index]);
+      sparse[entity] = EMPTY;
+      dense.pop_back();
     }
   }
 
-  size_t num_of_components = 0;
-  std::vector<size_t> sparse;
-  std::vector<size_t> dense;
+  void Reset() {
+    sparse.clear();
+    dense.clear();
+    // size = 0;
+  }
+
+  std::vector<T> &GetDense() { return dense; }
 };
 
 } // namespace SparseSet
