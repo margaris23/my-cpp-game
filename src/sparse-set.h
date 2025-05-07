@@ -3,7 +3,6 @@
 
 #include <climits>
 #include <cstddef>
-#include <iostream>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -59,7 +58,6 @@ public:
   // TODO: return bool for success removal
   void Remove(size_t entity) {
     if (contains(entity)) {
-      std::cout << "REMOVING: " << entity << "\n";
       size_t index = sparse[entity];
       std::swap(dense[dense.size() - 1], dense[index]);
       sparse[entity] = EMPTY;

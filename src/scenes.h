@@ -8,11 +8,26 @@ enum class Scene {
   GAME,
 };
 
+enum class SceneEvent {
+  NONE,
+  BACK,
+  NEXT,
+  PAUSE,
+  EXIT,
+};
+
 extern Scene g_currentScene;
 
 void LoadIntro();
 void UpdateIntro(float delta);
 void DrawIntro();
 void UnloadIntro();
+SceneEvent OnIntroEvent();
+
+void LoadMenu();
+void UpdateMenu(float delta);
+void DrawMenu();
+void UnloadMenu();
+SceneEvent OnMenuEvent();
 
 #endif

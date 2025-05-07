@@ -61,6 +61,7 @@ inline SparseSet::SparseSet<ForceComponent> forces;
 
 void Init();
 Entity CreateEntity();
+void DeleteEntity(Entity entity);
 void RenderSystem();
 void ResetSystem();
 void PositionSystem();

@@ -1,7 +1,6 @@
 #include "ecs.h"
 #include "raylib.h"
 #include "sparse-set.h"
-#include <algorithm>
 #include <string>
 
 namespace ECS {
@@ -18,6 +17,15 @@ Entity CreateEntity() {
   size_t index = entities.size();
   entities.push_back(index);
   return index;
+}
+
+void DeleteEntity(Entity entity) {
+  entities.erase(std::remove(entities.begin(), entities.end(), entity));
+  Remove<PositionComponent>(entity);
+  Remove<VelocityComponent>(entity);
+  Remove<TextComponent>(entity);
+  Remove<ForceComponent>(entity);
+  // add more ...
 }
 
 void Init() {
@@ -42,8 +50,9 @@ void RenderSystem() {
   // const auto &forcesComponents = forces.GetDense();
   // const auto &velocityComponents = velocities.GetDense();
   //
-  // DrawText(std::to_string(forcesComponents.size()).c_str(), 10, 100, 20, BLUE);
-  // DrawText(std::to_string(velocityComponents.size()).c_str(), 10, 140, 20,
+  // DrawText(std::to_string(forcesComponents.size()).c_str(), 10, 100, 20,
+  // BLUE); DrawText(std::to_string(velocityComponents.size()).c_str(), 10, 140,
+  // 20,
   //          BLUE);
   // DrawText(std::to_string(positions.GetDense().size()).c_str(), 10, 180, 20,
   //          BLUE);

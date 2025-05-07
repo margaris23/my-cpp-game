@@ -2,15 +2,18 @@
 #include "ecs.h"
 #include "raylib.h"
 #include "scenes.h"
-#include <cstdint>
+#include <fmt/core.h>
+#include <fmt/format.h>
 #include <memory>
 #include <vector>
 
 #include <cassert>
 
 static int s_counter;
+static SceneEvent event = SceneEvent::NONE;
 
-static ECS::Entity title;
+static ECS::Entity s_Title;
+// static ECS::Entity fps;
 
 // TODO: remove archetypes and use sparseset
 // static struct RenderArchetype s_renderArch;
@@ -64,9 +67,15 @@ void LoadIntro() {
   // positions.emplace_back(Vector2{30.f, 30.f});
   // velocities.emplace_back(Vector2{0.01f, 0.01f});
 
-  title = ECS::CreateEntity();
-  ECS::Add<ECS::TextComponent>(title, "Minoids");
-  ECS::Add<ECS::PositionComponent>(title, 30.f, 30.f);
+  s_Title = ECS::CreateEntity();
+  ECS::Add<ECS::TextComponent>(s_Title, "Minoids");
+  ECS::Add<ECS::PositionComponent>(
+      s_Title, (float)(GetScreenWidth() - MeasureText("Minoids", 20)) / 2.f,
+      (float)GetScreenHeight() / 2.f);
+
+  // fps = ECS::CreateEntity();
+  // ECS::Add<ECS::PositionComponent>(fps, (float)GetScreenWidth()
+  // - 55.f, 10.f);
 }
 
 void UpdateIntro(float delta) {
@@ -80,18 +89,25 @@ void UpdateIntro(float delta) {
 
   // auto start = std::chrono::high_resolution_clock::now();
 
-  // Input System
-  if (IsKeyDown(KEY_RIGHT)) {
-    ECS::Add<ECS::ForceComponent>(title, 5.f, 0.f);
-  } else if (IsKeyDown(KEY_LEFT)) {
-    ECS::Add<ECS::ForceComponent>(title, -5.f, 0.f);
-  } else if (IsKeyDown(KEY_UP)) {
-    ECS::Add<ECS::ForceComponent>(title, 0.f, -5.f);
-  } else if (IsKeyDown(KEY_DOWN)) {
-    ECS::Add<ECS::ForceComponent>(title, 0.f, 5.f);
-  } else {
-    ECS::Remove<ECS::ForceComponent>(title);
+  // ECS::Add<ECS::TextComponent>(fps, fmt::format("{0:.2f}", 1.f / delta));
+
+  if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) || IsKeyPressed(KEY_SPACE) ||
+      IsKeyPressed(KEY_ENTER)) {
+    event = SceneEvent::NEXT;
+    return;
   }
+  // Input System
+  // if (IsKeyDown(KEY_RIGHT)) {
+  //   ECS::Add<ECS::ForceComponent>(s_Title, 5.f, 0.f);
+  // } else if (IsKeyDown(KEY_LEFT)) {
+  //   ECS::Add<ECS::ForceComponent>(s_Title, -5.f, 0.f);
+  // } else if (IsKeyDown(KEY_UP)) {
+  //   ECS::Add<ECS::ForceComponent>(s_Title, 0.f, -5.f);
+  // } else if (IsKeyDown(KEY_DOWN)) {
+  //   ECS::Add<ECS::ForceComponent>(s_Title, 0.f, 5.f);
+  // } else {
+  //   ECS::Remove<ECS::ForceComponent>(s_Title);
+  // }
 
   // transform on 2 vectors
   // std::transform(positions.begin(), positions.end(), velocities.begin(),
@@ -120,9 +136,14 @@ void DrawIntro() {
   // RenderSystem(s_renderArch);
   ECS::RenderSystem();
   // ECS::ResetSystem();
+  // ECS::Remove<ECS::TextComponent>(fps);
 }
 
 void UnloadIntro() {
+  ECS::DeleteEntity(s_Title);
+  fmt::println("INTRO: Title DELETED");
   // s_renderArch.m_render.clear();
   // s_renderArch.m_transform.clear();
 }
+
+SceneEvent OnIntroEvent() { return event; }

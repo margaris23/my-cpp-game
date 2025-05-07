@@ -1,8 +1,10 @@
+#include "ecs.h"
+#include "fmt/core.h"
 #include "raylib.h"
 #include "scenes.h"
 #include <iostream>
 #include <ostream>
-#include "ecs.h"
+#include <string>
 
 #if defined(PLATFORM_WEB)
 #include <emscripten/emscripten.h>
@@ -11,9 +13,11 @@
 static const int screenWidth = 800;
 static const int screenHeight = 450;
 
-static void UpdateDrawFrame(void);
+static void UpdateDrawFrame();
+static void HandleSceneEvent();
 
 Scene g_currentScene = Scene::NONE;
+static bool s_AppShouldExit = false;
 
 static void LoadScene(Scene scene);
 static void UpdateCurrentScene(float delta);
@@ -32,7 +36,7 @@ int main(void) {
   LoadScene(Scene::INTRO);
 
   // Main game loop
-  while (!WindowShouldClose()) {
+  while (!WindowShouldClose() && !s_AppShouldExit) {
     UpdateDrawFrame();
   }
 #endif
@@ -47,6 +51,9 @@ int main(void) {
 static void UpdateDrawFrame(void) {
   float delta = GetFrameTime();
 
+  // SCENE EVENT PHASE
+  HandleSceneEvent();
+
   // UPDATE PHASE
   UpdateCurrentScene(delta);
 
@@ -55,6 +62,12 @@ static void UpdateDrawFrame(void) {
 
   ClearBackground(RAYWHITE);
   DrawCurrentScene();
+
+  // DEBUG PRINT ECS STATE
+  int posX = 10, posY = GetScreenHeight() - 20, i = 0;
+  for (const auto &entity : ECS::entities) {
+    DrawText(TextFormat("%i", entity), posX + i++ * 30, posY, 20, RED);
+  }
 
   EndDrawing();
 }
@@ -80,6 +93,7 @@ static void LoadScene(Scene scene) {
       LoadIntro();
       break;
     case Scene::MENU:
+      LoadMenu();
       break;
     case Scene::GAME:
       break;
@@ -88,6 +102,7 @@ static void LoadScene(Scene scene) {
     }
 
     g_currentScene = scene;
+    fmt::println("NEW SCENE: {}", static_cast<int>(g_currentScene));
   } else {
     std::cerr << "Scene already loaded!\n";
   }
@@ -99,6 +114,7 @@ static void UpdateCurrentScene(float delta) {
     UpdateIntro(delta);
     break;
   case Scene::MENU:
+    UpdateMenu(delta);
     break;
   case Scene::GAME:
     break;
@@ -113,7 +129,30 @@ static void DrawCurrentScene() {
     DrawIntro();
     break;
   case Scene::MENU:
+    DrawMenu();
     break;
+  case Scene::GAME:
+    break;
+  default:
+    break;
+  }
+}
+
+static void HandleSceneEvent() {
+  switch (g_currentScene) {
+  case Scene::INTRO: {
+    SceneEvent event = OnIntroEvent();
+    if (event == SceneEvent::NEXT) {
+      LoadScene(Scene::MENU);
+    }
+  } break;
+  case Scene::MENU: {
+    SceneEvent event = OnMenuEvent();
+    if (event == SceneEvent::EXIT) {
+      UnloadMenu();
+      s_AppShouldExit = true;
+    }
+  } break;
   case Scene::GAME:
     break;
   default:

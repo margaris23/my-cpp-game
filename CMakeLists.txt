@@ -26,6 +26,18 @@ add_executable(${PROJECT_NAME})
 add_subdirectory(src)
 add_compile_options(-g -Wall)
 
+FetchContent_Declare(
+  fmt
+  GIT_REPOSITORY https://github.com/fmtlib/fmt
+  GIT_TAG        e69e5f977d458f2650bb346dadf2ad30c5320281) # 10.2.1
+FetchContent_MakeAvailable(fmt)
+
+# Print debug information
+get_target_property(FMT_INCLUDE_DIRS fmt INTERFACE_INCLUDE_DIRECTORIES)
+message(STATUS "fmt include directories: ${FMT_INCLUDE_DIRS}")
+
+target_link_libraries(my-cpp-game fmt::fmt)
+
 set_target_properties(
   ${PROJECT_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY
                              ${CMAKE_BINARY_DIR}/${PROJECT_NAME})
