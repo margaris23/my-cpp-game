@@ -1,5 +1,5 @@
-#include "collision-system.h"
-#include "collision-component.h"
+#include "collision-system.hpp"
+#include "collision-component.hpp"
 #include "raylib.h"
 #include <memory>
 #include <vector>

@@ -1,6 +1,6 @@
-#include "ecs.h"
+#include "ecs.hpp"
 #include "raylib.h"
-#include "scenes.h"
+#include "scenes.hpp"
 #include <fmt/core.h>
 #include <fmt/format.h>
 
@@ -88,7 +88,7 @@ void UpdateIntro(float delta) {
     return;
   }
 
-  // Input System
+  // Input System - TESTING
   // if (IsKeyDown(KEY_RIGHT)) {
   //   ECS::Add<ECS::ForceComponent>(s_Title, 5.f, 0.f);
   // } else if (IsKeyDown(KEY_LEFT)) {

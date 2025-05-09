@@ -1,6 +1,5 @@
-#include "ecs.h"
+#include "ecs.hpp"
 #include "raylib.h"
-#include "sparse-set.h"
 #include <functional>
 #include <string>
 
@@ -42,12 +41,12 @@ void RenderSystem() {
 
   for (const auto &pos : positions.dense) {
     // TEXTS
-    const auto text = texts.Get(pos.entity);
+    const auto text = texts.Get(pos.m_entity);
     if (text) {
       DrawText(text->m_value.c_str(), pos.m_value.x, pos.m_value.y, 20, BLACK);
     }
     // SHAPES
-    const auto render = renders.Get(pos.entity);
+    const auto render = renders.Get(pos.m_entity);
     if (render) {
       if (RenderType::REC == render->m_type) {
         DrawRectangleLines(pos.m_value.x, pos.m_value.y, render->m_dimensions.x,
@@ -74,10 +73,10 @@ void RenderSystem() {
 
 void PositionSystem() {
   for (auto &pos : positions.dense) {
-    // DrawText(std::to_string(pos.entity).c_str(), 200, 100, 20, BLUE);
+    // DrawText(std::to_string(pos.m_entity).c_str(), 200, 100, 20, BLUE);
 
-    const auto force = forces.Get(pos.entity);
-    auto velocity = velocities.Get(pos.entity);
+    const auto force = forces.Get(pos.m_entity);
+    auto velocity = velocities.Get(pos.m_entity);
 
     if (force) {
       if (velocity) {
@@ -96,7 +95,7 @@ void PositionSystem() {
 
 void UISystem() {
   for (auto &widget : widgets.dense) {
-    auto widgetPos = positions.Get(widget.entity);
+    auto widgetPos = positions.Get(widget.m_entity);
     auto selectedWidgetPos = positions.Get(widget.m_selectedEntity);
 
     if (widgetPos && selectedWidgetPos) {

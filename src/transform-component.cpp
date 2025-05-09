@@ -1,4 +1,4 @@
-#include "transform-component.h"
+#include "transform-component.hpp"
 #include "raylib.h"
 #include <cmath>
 

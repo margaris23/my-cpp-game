@@ -1,7 +1,7 @@
-#include "ecs.h"
+#include "ecs.hpp"
 #include "fmt/core.h"
 #include "raylib.h"
-#include "scenes.h"
+#include "scenes.hpp"
 
 static SceneEvent s_Event = SceneEvent::NONE;
 static struct MenuState {

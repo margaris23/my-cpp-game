@@ -1,7 +1,7 @@
 #ifndef RECTANGLE_COLLISION_COMPONENT_H
 #define RECTANGLE_COLLISION_COMPONENT_H
 
-#include "collision-component.h"
+#include "collision-component.hpp"
 #include "raylib.h"
 
 class RectangleCollisionComponent : public CollisionComponent {

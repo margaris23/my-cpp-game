@@ -1,4 +1,4 @@
-#include "collision-component.h"
+#include "collision-component.hpp"
 
 CollisionComponent::CollisionComponent(ShapeVariant shape) : m_shape(shape) {}
 CollisionComponent::~CollisionComponent() {}

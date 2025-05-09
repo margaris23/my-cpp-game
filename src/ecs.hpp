@@ -3,7 +3,7 @@
 
 #include "fmt/core.h"
 #include "raylib.h"
-#include "sparse-set.h"
+#include "sparse-set.hpp"
 #include <bitset>
 #include <cstdint>
 #include <type_traits>
@@ -27,8 +27,9 @@ using ComponentGroups = std::unordered_map<ComponentMask, SparseSet::SparseSet<T
 
 struct PositionComponent {
   Vector2 m_value;
-  Entity entity;
-  PositionComponent(float x, float y) : m_value(Vector2{x, y}) {}
+  Entity m_entity;
+  explicit PositionComponent(float x, float y) : m_value(Vector2{x, y}) {}
+  ~PositionComponent() = default;
   PositionComponent(const PositionComponent &other) = delete;
   PositionComponent(PositionComponent &&other) noexcept = default;
   PositionComponent &operator=(PositionComponent &&rhs) noexcept = default;
@@ -36,49 +37,57 @@ struct PositionComponent {
 
 struct VelocityComponent {
   Vector2 m_value;
-  Entity entity;
-  VelocityComponent(float x, float y) : m_value(Vector2{x, y}) {}
+  Entity m_entity;
+  explicit VelocityComponent(float x, float y) : m_value(Vector2{x, y}) {}
+  ~VelocityComponent() = default;
   VelocityComponent(const VelocityComponent &other) = delete;
-  VelocityComponent(VelocityComponent&& other) noexcept = default;
-  VelocityComponent& operator=(VelocityComponent&& rhs) noexcept = default;
+  VelocityComponent(VelocityComponent &&other) noexcept = default;
+  VelocityComponent &operator=(VelocityComponent &&rhs) noexcept = default;
 };
 
 struct TextComponent {
   std::string m_value;
-  Entity entity;
-  TextComponent(std::string text) : m_value(text) {}
+  Entity m_entity;
+  explicit TextComponent(std::string text) : m_value(text) {}
+  ~TextComponent() = default;
   TextComponent(const TextComponent &other) = delete;
-  TextComponent(TextComponent&& other) noexcept = default;
-  TextComponent& operator=(TextComponent&& rhs) noexcept = default;
+  TextComponent(TextComponent &&other) noexcept = default;
+  TextComponent &operator=(TextComponent &&rhs) noexcept = default;
 };
 
 struct ForceComponent {
   Vector2 m_value;
-  Entity entity;
-  ForceComponent(float x, float y) : m_value(Vector2{x, y}) {}
+  Entity m_entity;
+  explicit ForceComponent(float x, float y) : m_value(Vector2{x, y}) {}
+  ~ForceComponent() = default;
   ForceComponent(const ForceComponent &other) = delete;
-  ForceComponent(ForceComponent&& other) noexcept = default;
-  ForceComponent& operator=(ForceComponent&& rhs) noexcept = default;
+  ForceComponent(ForceComponent &&other) noexcept = default;
+  ForceComponent &operator=(ForceComponent &&rhs) noexcept = default;
 };
 
 struct UIComponent {
   Entity m_selectedEntity;
-  Entity entity;
-  UIComponent(Entity selectedEntity) : m_selectedEntity(selectedEntity) {}
+  Entity m_entity;
+  explicit UIComponent(Entity selectedEntity) : m_selectedEntity(selectedEntity) {}
+  ~UIComponent() = default;
   UIComponent(const UIComponent &other) = delete;
-  UIComponent(UIComponent&& other) noexcept = default;
-  UIComponent& operator=(UIComponent&& rhs) noexcept = default;
+  UIComponent(UIComponent &&other) noexcept = default;
+  UIComponent &operator=(UIComponent &&rhs) noexcept = default;
 };
 
 enum class RenderType { REC, CIRCLE };
 struct RenderComponent {
   Vector2 m_dimensions; // width/height or radius
-  Entity entity;
+  Entity m_entity;
   RenderType m_type;
-  RenderComponent(float width, float height)
+  explicit RenderComponent(float width, float height)
       : m_dimensions({width, height}), m_type(RenderType::REC) {}
-  RenderComponent(float radius)
+  explicit RenderComponent(float radius)
       : m_dimensions({radius, radius}), m_type(RenderType::CIRCLE) {}
+  ~RenderComponent() = default;
+  RenderComponent(const RenderComponent &other) = delete;
+  RenderComponent(RenderComponent &&other) noexcept = default;
+  RenderComponent &operator=(RenderComponent &&rhs) noexcept = default;
 };
 
 extern std::vector<Entity> entities;

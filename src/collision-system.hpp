@@ -1,7 +1,7 @@
 #ifndef COLLISION_SYSTEM_H
 #define COLLISION_SYSTEM_H
 
-#include "collision-component.h"
+#include "collision-component.hpp"
 #include <vector>
 
 void CollisionSystem(

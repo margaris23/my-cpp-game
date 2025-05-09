@@ -1,6 +1,6 @@
-#include "ecs.h"
+#include "ecs.hpp"
 #include "raylib.h"
-#include "scenes.h"
+#include "scenes.hpp"
 #include <iostream>
 #include <ostream>
 
@@ -72,7 +72,7 @@ static void UpdateDrawFrame(void) {
   i = 0;
   DrawText("POS:", posX, posY - 20, 20, RED);
   for (const auto &pos : ECS::positions.dense) {
-    DrawText(TextFormat("%i", pos.entity), posX + 50 + i++ * 30, posY - 20, 20, RED);
+    DrawText(TextFormat("%i", pos.m_entity), posX + 50 + i++ * 30, posY - 20, 20, RED);
   }
 
   EndDrawing();

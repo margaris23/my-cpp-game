@@ -1,8 +1,8 @@
 #ifndef MOVEMENT_SYSTEM_H
 #define MOVEMENT_SYSTEM_H
 
-#include "collision-component.h"
-#include "transform-component.h"
+#include "collision-component.hpp"
+#include "transform-component.hpp"
 #include <memory>
 #include <vector>
 

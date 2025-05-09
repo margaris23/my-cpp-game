@@ -8,7 +8,7 @@
 
 namespace SparseSet {
 
-static constexpr int INITIAL_DENSE_SIZE = 10;
+static constexpr int INITIALCOMPONENTS = 10;
 static constexpr int INITIAL_ENTITIES = 10;
 static constexpr size_t EMPTY = ULONG_LONG_MAX - 1;
 
@@ -21,7 +21,7 @@ public:
     if (initialNumOfEntities > sparse.capacity()) {
       sparse.resize(initialNumOfEntities, EMPTY);
     }
-    dense.reserve(INITIAL_DENSE_SIZE);
+    dense.reserve(INITIALCOMPONENTS);
   }
 
   ~SparseSet() {
@@ -30,13 +30,13 @@ public:
   }
 
   bool contains(size_t id) const {
-    return id < sparse.size() && dense[sparse[id]].entity == id;
+    return id < sparse.size() && dense[sparse[id]].m_entity == id;
   }
 
   // TODO: reuse and/or update
   bool Add(size_t id, T &&denseItem) {
     if (!contains(id)) {
-      denseItem.entity = id;
+      denseItem.m_entity = id;
       sparse[id] = dense.size();
       dense.push_back(std::move(denseItem));
       return true;
@@ -47,7 +47,7 @@ public:
   T *Get(size_t id) {
     if (id < sparse.size()) {
       size_t denseIndex = sparse[id];
-      if (denseIndex != EMPTY && dense[denseIndex].entity == id) {
+      if (denseIndex != EMPTY && dense[denseIndex].m_entity == id) {
         return &(dense[denseIndex]);
       }
     }

@@ -1,5 +1,5 @@
-#include "rectangle-collision-component.h"
-#include "collision-component.h"
+#include "rectangle-collision-component.hpp"
+#include "collision-component.hpp"
 #include "raylib.h"
 #include <variant>
 
