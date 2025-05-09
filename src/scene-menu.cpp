@@ -40,10 +40,9 @@ void LoadMenu() {
   ECS::Add<ECS::TextComponent>(s_ExitBtn, "Exit");
 
   s_SelectedBtn = ECS::CreateEntity();
+
   int textWidth = MeasureText("New Game", 20);
   float padding = 10.f;
-  // ECS::Add<ECS::UIComponent>(s_SelectedBtn, s_NewGameBtn);  // selected entity is
-  // NewGame button
   ECS::Add<ECS::PositionComponent>(s_SelectedBtn, H_CenterText("New Game") - padding,
                                    100.f - padding);
   // Rectangle { width, height }
@@ -83,12 +82,6 @@ void UpdateMenu(float delta) {
     selectedBtnComponent->m_value.x = H_CenterText("           ") - 10.f;
     selectedBtnComponent->m_value.y = 100.f + s_State.selected * 50.f - 10.f;
   }
-
-  // Vector2 mousePos = GetMousePosition();
-  // const auto &position = ECS::Get<ECS::PositionComponent>(s_NewGameBtn);
-  // if (position) {
-  //   CheckCollisionPointRec(position->m_value, )
-  // }
 }
 
 void DrawMenu() { ECS::RenderSystem(); }

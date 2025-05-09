@@ -23,6 +23,7 @@ static bool s_AppShouldExit = false;
 
 int main(void) {
   InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "My Game");
+  SetExitKey(KEY_NULL); // disable Esc key
   InitAudioDevice();
 
 #if defined(PLATFORM_WEB)
