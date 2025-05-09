@@ -1,12 +1,12 @@
 #include "ecs.h"
 #include "raylib.h"
 #include "sparse-set.h"
+#include <functional>
 #include <string>
 
 namespace ECS {
 
-std::unordered_map<std::type_index, std::bitset<MAX_COMPONENTS>>
-    s_typeToBitSetMap;
+std::unordered_map<std::type_index, std::bitset<MAX_COMPONENTS>> s_typeToBitSetMap;
 
 std::vector<Entity> entities;
 // SparseSet::SparseSet<PositionComponent> positions;
@@ -24,7 +24,9 @@ void DeleteEntity(Entity entity) {
   Remove<PositionComponent>(entity);
   Remove<VelocityComponent>(entity);
   Remove<TextComponent>(entity);
+  Remove<RenderComponent>(entity);
   Remove<ForceComponent>(entity);
+  Remove<UIComponent>(entity);
   // add more ...
 }
 
@@ -35,31 +37,43 @@ void Init() {
 }
 
 void RenderSystem() {
-  // we expect texts to have position - WRONG???
-  const auto &textComponents = texts.GetDense();
-  for (const auto &pos : positions.GetDense()) {
+  const auto &textComponents = texts.dense;
+  const auto &renderComponents = renders.dense;
+
+  for (const auto &pos : positions.dense) {
+    // TEXTS
     const auto text = texts.Get(pos.entity);
     if (text) {
       DrawText(text->m_value.c_str(), pos.m_value.x, pos.m_value.y, 20, BLACK);
+    }
+    // SHAPES
+    const auto render = renders.Get(pos.entity);
+    if (render) {
+      if (RenderType::REC == render->m_type) {
+        DrawRectangleLines(pos.m_value.x, pos.m_value.y, render->m_dimensions.x,
+                           render->m_dimensions.y, BLACK);
+      } else if (RenderType::CIRCLE == render->m_type) {
+        DrawCircle(pos.m_value.x, pos.m_value.y, render->m_dimensions.x, BLACK);
+      }
     }
   }
 
   // ForEach<PositionComponent, TextComponent>(fn);
 
   // DEBUG DATA
-  // const auto &forcesComponents = forces.GetDense();
-  // const auto &velocityComponents = velocities.GetDense();
+  // const auto &forcesComponents = forces.dense;
+  // const auto &velocityComponents = velocities.dense;
   //
   // DrawText(std::to_string(forcesComponents.size()).c_str(), 10, 100, 20,
   // BLUE); DrawText(std::to_string(velocityComponents.size()).c_str(), 10, 140,
   // 20,
   //          BLUE);
-  // DrawText(std::to_string(positions.GetDense().size()).c_str(), 10, 180, 20,
+  // DrawText(std::to_string(positions.dense.size()).c_str(), 10, 180, 20,
   //          BLUE);
 }
 
 void PositionSystem() {
-  for (auto &pos : positions.GetDense()) {
+  for (auto &pos : positions.dense) {
     // DrawText(std::to_string(pos.entity).c_str(), 200, 100, 20, BLUE);
 
     const auto force = forces.Get(pos.entity);
@@ -77,6 +91,20 @@ void PositionSystem() {
       pos.m_value.x += velocity->m_value.x;
       pos.m_value.y += velocity->m_value.y;
     }
+  }
+}
+
+void UISystem() {
+  for (auto &widget : widgets.dense) {
+    auto widgetPos = positions.Get(widget.entity);
+    auto selectedWidgetPos = positions.Get(widget.m_selectedEntity);
+
+    if (widgetPos && selectedWidgetPos) {
+      widgetPos->m_value.x = selectedWidgetPos->m_value.x;
+      widgetPos->m_value.y = selectedWidgetPos->m_value.y;
+    }
+    // ECS::Add<ECS::PositionComponent>(s_SelectedBtn, H_CenterText("New Game") - padding, 100.f - padding);
+    // ECS::Add<ECS::RenderComponent>(s_SelectedBtn, textWidth + 2.f * padding, 20.f + 2 * padding);  // Rectangle
   }
 }
 

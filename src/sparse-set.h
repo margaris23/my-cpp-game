@@ -3,7 +3,6 @@
 
 #include <climits>
 #include <cstddef>
-#include <memory>
 #include <utility>
 #include <vector>
 
@@ -35,21 +34,21 @@ public:
   }
 
   // TODO: reuse and/or update
-  bool Add(size_t id, T &denseItem) {
+  bool Add(size_t id, T &&denseItem) {
     if (!contains(id)) {
       denseItem.entity = id;
       sparse[id] = dense.size();
-      dense.push_back(denseItem);
+      dense.push_back(std::move(denseItem));
       return true;
     }
     return false;
   }
 
-  std::unique_ptr<T> Get(size_t id) const {
+  T *Get(size_t id) {
     if (id < sparse.size()) {
       size_t denseIndex = sparse[id];
       if (denseIndex != EMPTY && dense[denseIndex].entity == id) {
-        return std::make_unique<T>(dense[denseIndex]);
+        return &(dense[denseIndex]);
       }
     }
     return nullptr;
@@ -70,8 +69,6 @@ public:
     dense.clear();
     // size = 0;
   }
-
-  std::vector<T> &GetDense() { return dense; }
 };
 
 } // namespace SparseSet

@@ -1,30 +1,28 @@
 #include "ecs.h"
-#include "fmt/core.h"
 #include "raylib.h"
 #include "scenes.h"
 #include <iostream>
 #include <ostream>
-#include <string>
 
 #if defined(PLATFORM_WEB)
 #include <emscripten/emscripten.h>
 #endif
 
-static const int screenWidth = 800;
-static const int screenHeight = 450;
+static constexpr int SCREEN_WIDTH = 800;
+static constexpr int SCREEN_HEIGHT = 450;
 
 static void UpdateDrawFrame();
 static void HandleSceneEvent();
+static void LoadScene(Scene scene);
+static void UpdateCurrentScene(float delta);
+static void DrawCurrentScene();
+static void UnloadCurrentScene();
 
 Scene g_currentScene = Scene::NONE;
 static bool s_AppShouldExit = false;
 
-static void LoadScene(Scene scene);
-static void UpdateCurrentScene(float delta);
-static void DrawCurrentScene();
-
 int main(void) {
-  InitWindow(screenWidth, screenHeight, "My Game");
+  InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "My Game");
   InitAudioDevice();
 
 #if defined(PLATFORM_WEB)
@@ -41,6 +39,7 @@ int main(void) {
   }
 #endif
 
+  UnloadCurrentScene();
   CloseAudioDevice();
   CloseWindow();
 
@@ -65,29 +64,40 @@ static void UpdateDrawFrame(void) {
 
   // DEBUG PRINT ECS STATE
   int posX = 10, posY = GetScreenHeight() - 20, i = 0;
+  DrawText("EID:", posX, posY, 20, RED);
   for (const auto &entity : ECS::entities) {
-    DrawText(TextFormat("%i", entity), posX + i++ * 30, posY, 20, RED);
+    DrawText(TextFormat("%i", entity), posX + 50 + i++ * 30, posY, 20, RED);
+  }
+
+  i = 0;
+  DrawText("POS:", posX, posY - 20, 20, RED);
+  for (const auto &pos : ECS::positions.dense) {
+    DrawText(TextFormat("%i", pos.entity), posX + 50 + i++ * 30, posY - 20, 20, RED);
   }
 
   EndDrawing();
 }
 
+static void UnloadCurrentScene() {
+  switch (g_currentScene) {
+  case Scene::INTRO:
+    UnloadIntro();
+    break;
+  case Scene::MENU:
+    UnloadMenu();
+    break;
+  case Scene::GAME:
+    UnloadGame();
+    break;
+  default:
+    break;
+  }
+}
+
 static void LoadScene(Scene scene) {
   if (scene != g_currentScene) {
-    // UNLOAD
-    switch (g_currentScene) {
-    case Scene::INTRO:
-      UnloadIntro();
-      break;
-    case Scene::MENU:
-      break;
-    case Scene::GAME:
-      break;
-    default:
-      break;
-    }
+    UnloadCurrentScene();
 
-    // LOAD
     switch (scene) {
     case Scene::INTRO:
       LoadIntro();
@@ -96,13 +106,13 @@ static void LoadScene(Scene scene) {
       LoadMenu();
       break;
     case Scene::GAME:
+      LoadGame();
       break;
     default:
       break;
     }
 
     g_currentScene = scene;
-    fmt::println("NEW SCENE: {}", static_cast<int>(g_currentScene));
   } else {
     std::cerr << "Scene already loaded!\n";
   }
@@ -117,6 +127,7 @@ static void UpdateCurrentScene(float delta) {
     UpdateMenu(delta);
     break;
   case Scene::GAME:
+    UpdateGame(delta);
     break;
   default:
     break;
@@ -132,6 +143,7 @@ static void DrawCurrentScene() {
     DrawMenu();
     break;
   case Scene::GAME:
+    DrawGame();
     break;
   default:
     break;
@@ -148,8 +160,9 @@ static void HandleSceneEvent() {
   } break;
   case Scene::MENU: {
     SceneEvent event = OnMenuEvent();
-    if (event == SceneEvent::EXIT) {
-      UnloadMenu();
+    if (event == SceneEvent::NEXT) {
+      LoadScene(Scene::GAME);
+    } else if (event == SceneEvent::EXIT) {
       s_AppShouldExit = true;
     }
   } break;

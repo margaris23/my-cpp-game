@@ -30,4 +30,10 @@ void DrawMenu();
 void UnloadMenu();
 SceneEvent OnMenuEvent();
 
+void LoadGame();
+void UpdateGame(float delta);
+void DrawGame();
+void UnloadGame();
+SceneEvent OnGameEvent();
+
 #endif

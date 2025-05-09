@@ -1,23 +1,18 @@
-#include "collision-component.h"
 #include "ecs.h"
 #include "raylib.h"
 #include "scenes.h"
 #include <fmt/core.h>
 #include <fmt/format.h>
-#include <memory>
-#include <vector>
-
-#include <cassert>
 
 static int s_counter;
-static SceneEvent event = SceneEvent::NONE;
+static SceneEvent s_Event = SceneEvent::NONE;
 
 static ECS::Entity s_Title;
 // static ECS::Entity fps;
 
 // TODO: remove archetypes and use sparseset
 // static struct RenderArchetype s_renderArch;
-static std::vector<std::unique_ptr<CollisionComponent>> collisions;
+// static std::vector<std::unique_ptr<CollisionComponent>> collisions;
 
 const int MAX_RENDER_COMPONENTS = 5;
 // constexpr uint16_t MAX_ENTITIES = 5;
@@ -32,9 +27,9 @@ void LoadIntro() {
   // if (s_renderArch.m_render.capacity() <= MAX_RENDER_COMPONENTS) {
   //   s_renderArch.m_render.reserve(MAX_RENDER_COMPONENTS);
   // }
-  if (collisions.capacity() <= MAX_RENDER_COMPONENTS) {
-    collisions.reserve(MAX_RENDER_COMPONENTS);
-  }
+  // if (collisions.capacity() <= MAX_RENDER_COMPONENTS) {
+  //   collisions.reserve(MAX_RENDER_COMPONENTS);
+  // }
 
   // FOR RENDER
   // s_renderArch.m_render.push_back(std::make_unique<TextComponent>("Minoids"));
@@ -72,10 +67,6 @@ void LoadIntro() {
   ECS::Add<ECS::PositionComponent>(
       s_Title, (float)(GetScreenWidth() - MeasureText("Minoids", 20)) / 2.f,
       (float)GetScreenHeight() / 2.f);
-
-  // fps = ECS::CreateEntity();
-  // ECS::Add<ECS::PositionComponent>(fps, (float)GetScreenWidth()
-  // - 55.f, 10.f);
 }
 
 void UpdateIntro(float delta) {
@@ -93,9 +84,10 @@ void UpdateIntro(float delta) {
 
   if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) || IsKeyPressed(KEY_SPACE) ||
       IsKeyPressed(KEY_ENTER)) {
-    event = SceneEvent::NEXT;
+    s_Event = SceneEvent::NEXT;
     return;
   }
+
   // Input System
   // if (IsKeyDown(KEY_RIGHT)) {
   //   ECS::Add<ECS::ForceComponent>(s_Title, 5.f, 0.f);
@@ -141,9 +133,8 @@ void DrawIntro() {
 
 void UnloadIntro() {
   ECS::DeleteEntity(s_Title);
-  fmt::println("INTRO: Title DELETED");
   // s_renderArch.m_render.clear();
   // s_renderArch.m_transform.clear();
 }
 
-SceneEvent OnIntroEvent() { return event; }
+SceneEvent OnIntroEvent() { return s_Event; }
