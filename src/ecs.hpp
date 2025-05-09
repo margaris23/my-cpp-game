@@ -21,7 +21,7 @@ using ComponentMask = std::bitset<MAX_COMPONENTS>;
 extern std::unordered_map<std::type_index, std::bitset<MAX_COMPONENTS>> s_typeToBitSetMap;
 
 template <typename T>
-using ComponentGroups = std::unordered_map<ComponentMask, SparseSet::SparseSet<T>>;
+using ComponentGroups = std::unordered_map<ComponentMask, SparseSet<T>>;
 
 // static ComponentGroups groups; // Mask -> SparseSet<Components>
 
@@ -92,12 +92,12 @@ struct RenderComponent {
 
 extern std::vector<Entity> entities;
 
-inline SparseSet::SparseSet<PositionComponent> positions;
-inline SparseSet::SparseSet<VelocityComponent> velocities;
-inline SparseSet::SparseSet<TextComponent> texts;
-inline SparseSet::SparseSet<ForceComponent> forces;
-inline SparseSet::SparseSet<RenderComponent> renders;
-inline SparseSet::SparseSet<UIComponent> widgets;
+inline SparseSet<PositionComponent> positions;
+inline SparseSet<VelocityComponent> velocities;
+inline SparseSet<TextComponent> texts;
+inline SparseSet<ForceComponent> forces;
+inline SparseSet<RenderComponent> renders;
+inline SparseSet<UIComponent> widgets;
 
 Entity CreateEntity();
 

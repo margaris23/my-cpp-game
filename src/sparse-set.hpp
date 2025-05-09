@@ -6,8 +6,6 @@
 #include <utility>
 #include <vector>
 
-namespace SparseSet {
-
 static constexpr int INITIALCOMPONENTS = 10;
 static constexpr int INITIAL_ENTITIES = 10;
 static constexpr size_t EMPTY = ULONG_LONG_MAX - 1;
@@ -70,7 +68,5 @@ public:
     // size = 0;
   }
 };
-
-} // namespace SparseSet
 
 #endif
