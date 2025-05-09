@@ -10,9 +10,7 @@ Welcome to **Nikolaos Margaris Raylib Game**!
 cmake -S . -B build
 ```
 
-> if you want with debug symbols put the flag `-DCMAKE_BUILD_TYPE=Debug`
-
-- After CMake config your project build:
+- After CMake finishes configuring your project then build:
 
 ```sh
 cmake --build build
@@ -24,7 +22,14 @@ cmake --build build
 
 ### Description
 
-A simple game written in C++ using Raylib
+A simple game written in C++ using Raylib - MINOIDS
+
+Read more in a series of Blogs:
+
+- [Creating a Game in C++ (Part 1)](https://reverence23.medium.com/creating-a-game-in-c-part-1-787d6f0525e7)
+- [Creating a Game in C++ (Part 2)](https://reverence23.medium.com/creating-a-game-in-c-part2-299a331f4c81)
+- [Creating a Game in C++ (Part 3)](https://reverence23.medium.com/creating-a-game-in-c-part-3-088c6413cf2e)
+- more to come ...
 
 ### Features
 
