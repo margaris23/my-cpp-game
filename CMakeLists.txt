@@ -21,11 +21,6 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(raylib)
 
-# Our Project
-add_executable(${PROJECT_NAME})
-add_subdirectory(src)
-add_compile_options(-g -Wall)
-
 FetchContent_Declare(
   fmt
   GIT_REPOSITORY https://github.com/fmtlib/fmt
@@ -35,6 +30,12 @@ FetchContent_MakeAvailable(fmt)
 # Print debug information
 get_target_property(FMT_INCLUDE_DIRS fmt INTERFACE_INCLUDE_DIRECTORIES)
 message(STATUS "fmt include directories: ${FMT_INCLUDE_DIRS}")
+
+# Our Project
+add_executable(${PROJECT_NAME})
+add_subdirectory(src)
+add_compile_options(-g -Wall)
+
 
 target_link_libraries(my-cpp-game fmt::fmt)
 
