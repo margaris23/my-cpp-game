@@ -8,7 +8,6 @@ static int s_counter;
 static SceneEvent s_Event = SceneEvent::NONE;
 
 static ECS::Entity s_Title;
-// static ECS::Entity fps;
 
 void LoadIntro() {
   float screen_cw = GetScreenWidth() / 2.f;
@@ -22,16 +21,6 @@ void LoadIntro() {
 }
 
 void UpdateIntro(float delta) {
-  // Order of Systems
-  // 1. Input System
-  // 2. AI System
-  // 3. Physics
-  // ...
-  // N-1. Render
-  // N. Audio
-
-  // auto start = std::chrono::high_resolution_clock::now();
-
   if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) || IsKeyPressed(KEY_SPACE) ||
       IsKeyPressed(KEY_ENTER)) {
     s_Event = SceneEvent::NEXT;
@@ -59,6 +48,9 @@ void DrawIntro() {
   // ECS::ResetSystem();
 }
 
-void UnloadIntro() { ECS::DeleteEntity(s_Title); }
+void UnloadIntro() {
+  ECS::DeleteEntity(s_Title);
+  s_Event = SceneEvent::NONE;
+}
 
 SceneEvent OnIntroEvent() { return s_Event; }

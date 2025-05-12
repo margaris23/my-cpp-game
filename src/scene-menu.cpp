@@ -23,6 +23,8 @@ void LoadMenu() {
   float screen_cw = GetScreenWidth() / 2.f;
   float screen_ch = GetScreenHeight() / 2.f;
 
+  fmt::println("CURRENT POSITIONS LENGTH -- {} --", ECS::positions.dense.size());
+
   s_NewGameBtn = ECS::CreateEntity();
   ECS::Add<ECS::PositionComponent>(s_NewGameBtn, H_CenterText("New Game"), 100.f);
   ECS::Add<ECS::TextComponent>(s_NewGameBtn, "New Game");
@@ -87,6 +89,7 @@ void UpdateMenu(float delta) {
 void DrawMenu() { ECS::RenderSystem(); }
 
 void UnloadMenu() {
+  s_Event = SceneEvent::NONE;
   ECS::DeleteEntity(s_NewGameBtn);
   ECS::DeleteEntity(s_SettingsBtn);
   ECS::DeleteEntity(s_HelpBtn);

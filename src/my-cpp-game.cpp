@@ -3,6 +3,7 @@
 #include "scenes.hpp"
 #include <iostream>
 #include <ostream>
+#include <vector>
 
 #if defined(PLATFORM_WEB)
 #include <emscripten/emscripten.h>
@@ -46,6 +47,8 @@ int main(void) {
 
   return 0;
 }
+std::vector<Vector2> points = {
+    {300.f, 300.f}, {300.f, 320.f}, {320.f, 320.f}, {320.f, 300.f}};
 
 // Update and draw game frame
 static void UpdateDrawFrame(void) {
@@ -93,11 +96,14 @@ static void UnloadCurrentScene() {
   default:
     break;
   }
+  g_currentScene = Scene::NONE;
 }
 
 static void LoadScene(Scene scene) {
   if (scene != g_currentScene) {
     UnloadCurrentScene();
+
+    g_currentScene = scene;
 
     switch (scene) {
     case Scene::INTRO:
@@ -113,7 +119,6 @@ static void LoadScene(Scene scene) {
       break;
     }
 
-    g_currentScene = scene;
   } else {
     std::cerr << "Scene already loaded!\n";
   }
@@ -167,8 +172,12 @@ static void HandleSceneEvent() {
       s_AppShouldExit = true;
     }
   } break;
-  case Scene::GAME:
-    break;
+  case Scene::GAME: {
+    SceneEvent event = OnGameEvent();
+    if (event == SceneEvent::EXIT) {
+      s_AppShouldExit = true;
+    }
+  } break;
   default:
     break;
   }

@@ -1,4 +1,5 @@
 #include "ecs.hpp"
+#include "fmt/core.h"
 #include "raylib.h"
 #include <functional>
 #include <string>
@@ -19,9 +20,13 @@ Entity CreateEntity() {
 }
 
 void DeleteEntity(Entity entity) {
+  fmt::print("\tRemoving Entity {} ... ", entity);
   entities.erase(std::remove(entities.begin(), entities.end(), entity));
+  fmt::println(" #entities left: {}", entities.size());
+
   Remove<PositionComponent>(entity);
   Remove<VelocityComponent>(entity);
+  Remove<ColliderComponent>(entity);
   Remove<TextComponent>(entity);
   Remove<RenderComponent>(entity);
   Remove<ForceComponent>(entity);
@@ -48,12 +53,13 @@ void RenderSystem() {
     // SHAPES
     const auto render = renders.Get(pos.m_entity);
     if (render) {
-      if (RenderType::REC == render->m_type) {
+      if (Shape::RECTANGLE == render->m_shape) {
         DrawRectangleLines(pos.m_value.x, pos.m_value.y, render->m_dimensions.x,
                            render->m_dimensions.y, BLACK);
-      } else if (RenderType::CIRCLE == render->m_type) {
+      } else if (Shape::CIRCLE == render->m_shape) {
         DrawCircle(pos.m_value.x, pos.m_value.y, render->m_dimensions.x, BLACK);
       }
+      // TODO: add more...
     }
   }
 
@@ -102,8 +108,43 @@ void UISystem() {
       widgetPos->m_value.x = selectedWidgetPos->m_value.x;
       widgetPos->m_value.y = selectedWidgetPos->m_value.y;
     }
-    // ECS::Add<ECS::PositionComponent>(s_SelectedBtn, H_CenterText("New Game") - padding, 100.f - padding);
-    // ECS::Add<ECS::RenderComponent>(s_SelectedBtn, textWidth + 2.f * padding, 20.f + 2 * padding);  // Rectangle
+    // ECS::Add<ECS::PositionComponent>(s_SelectedBtn, H_CenterText("New Game") - padding,
+    // 100.f - padding); ECS::Add<ECS::RenderComponent>(s_SelectedBtn, textWidth + 2.f *
+    // padding, 20.f + 2 * padding);  // Rectangle
+  }
+}
+
+void CollisionDetectionSystem() {
+  const auto &positionComponents = positions.dense;
+  const auto &colliderComponents = colliders.dense;
+
+  for (size_t indexA = 0; indexA < colliderComponents.size(); indexA++) {
+    for (size_t indexB = indexA + 1; indexB < colliders.dense.size(); indexB++) {
+      // if (colliderA.m_entity == colliderB.m_entity) {
+      //   continue;
+      // }
+
+      const auto posA = positions.Get(colliderComponents[indexA].m_entity);
+      const auto posB = positions.Get(colliderComponents[indexB].m_entity);
+
+      if (Shape::RECTANGLE == colliderComponents[indexA].m_shape) {
+        // fmt::println("Spaceship ({},{}) -> Meteor {} ({},{})", posA->m_value.x,
+        //              posA->m_value.y, colliderComponents[indexB].m_entity,
+        //              posB->m_value.x, posB->m_value.y);
+
+        if (Shape::CIRCLE == colliderComponents[indexB].m_shape) {
+          const auto &dimA = colliderComponents[indexA].m_dimensions;
+
+          bool collides = CheckCollisionCircleRec(
+              posB->m_value, colliderComponents[indexB].m_dimensions.x,
+              {posA->m_value.x, posA->m_value.y, dimA.x, dimA.y});
+
+          if (collides)
+            fmt::println("{} collides with {}", colliderComponents[indexA].m_entity,
+                         colliderComponents[indexB].m_entity);
+        }
+      }
+    }
   }
 }
 

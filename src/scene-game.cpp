@@ -6,7 +6,7 @@
 #include <random>
 #include <vector>
 
-static constexpr int MAX_METEORS = 10;
+static constexpr int MAX_METEORS = 3;
 
 static SceneEvent s_Event = SceneEvent::NONE;
 static struct GameState {
@@ -33,13 +33,20 @@ void LoadGame() {
   // Our Hero
   s_SpaceShip = ECS::CreateEntity();
   ECS::Add<ECS::PositionComponent>(s_SpaceShip, screen_cw, screen_ch);
-  ECS::Add<ECS::RenderComponent>(s_SpaceShip, 20.f, 20.f);
+  Vector2 dimension{20.f, 20.f};
+  ECS::Add<ECS::RenderComponent>(s_SpaceShip, dimension.x, dimension.y);
+  ECS::Add<ECS::ColliderComponent>(s_SpaceShip, dimension.x, dimension.y);
 
   // Generate Meteors
-  for (int i = 0; i < num_of_meteors(gen); i++) {
+  int num = num_of_meteors(gen);
+  fmt::println("Generating {} meteors...", num);
+  for (int i = 0; i < num; i++) {
     meteors.push_back(ECS::CreateEntity());
-    ECS::Add<ECS::PositionComponent>(meteors.back(), dist_x(gen), dist_y(gen));
-    ECS::Add<ECS::RenderComponent>(meteors.back(), dist_size(gen));
+    ECS::Entity meteor = meteors.back();
+    ECS::Add<ECS::PositionComponent>(meteor, dist_x(gen), dist_y(gen));
+    float radius = dist_size(gen);
+    ECS::Add<ECS::RenderComponent>(meteor, radius);
+    ECS::Add<ECS::ColliderComponent>(meteor, radius);
   }
 
   fmt::println("GAME LOADED!");
@@ -47,6 +54,11 @@ void LoadGame() {
 
 void UpdateGame(float delta) {
   ECS::UISystem();
+
+  // if (IsKeyDown(KEY_ESCAPE)) {
+  //   s_Event = SceneEvent::EXIT;
+  //   return;
+  // }
 
   // INPUT Testing
   // TODO: update force in order to support diagonal movement
@@ -63,6 +75,7 @@ void UpdateGame(float delta) {
   }
 
   ECS::PositionSystem();
+  ECS::CollisionDetectionSystem();
 
   // if (IsKeyPressed(KEY_DOWN)) {
   // } else if (IsKeyPressed(KEY_UP)) {
@@ -74,6 +87,8 @@ void UpdateGame(float delta) {
 void DrawGame() { ECS::RenderSystem(); }
 
 void UnloadGame() {
+  s_Event = SceneEvent::NONE;
+
   ECS::DeleteEntity(s_SpaceShip);
   std::for_each(meteors.begin(), meteors.end(),
                 [](auto meteor) { ECS::DeleteEntity(meteor); });

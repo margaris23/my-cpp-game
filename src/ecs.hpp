@@ -23,6 +23,8 @@ extern std::unordered_map<std::type_index, std::bitset<MAX_COMPONENTS>> s_typeTo
 template <typename T>
 using ComponentGroups = std::unordered_map<ComponentMask, SparseSet<T>>;
 
+enum class Shape { RECTANGLE, CIRCLE };
+
 // static ComponentGroups groups; // Mask -> SparseSet<Components>
 
 struct PositionComponent {
@@ -43,6 +45,20 @@ struct VelocityComponent {
   VelocityComponent(const VelocityComponent &other) = delete;
   VelocityComponent(VelocityComponent &&other) noexcept = default;
   VelocityComponent &operator=(VelocityComponent &&rhs) noexcept = default;
+};
+
+struct ColliderComponent {
+  Vector2 m_dimensions; // width/height or radius
+  Entity m_entity;
+  Shape m_shape;
+  explicit ColliderComponent(float width, float height)
+      : m_dimensions({width, height}), m_shape(Shape::RECTANGLE) {}
+  explicit ColliderComponent(float radius)
+      : m_dimensions({radius, radius}), m_shape(Shape::CIRCLE) {}
+  ~ColliderComponent() = default;
+  ColliderComponent(const ColliderComponent &other) = delete;
+  ColliderComponent(ColliderComponent &&other) noexcept = default;
+  ColliderComponent &operator=(ColliderComponent &&rhs) noexcept = default;
 };
 
 struct TextComponent {
@@ -75,15 +91,15 @@ struct UIComponent {
   UIComponent &operator=(UIComponent &&rhs) noexcept = default;
 };
 
-enum class RenderType { REC, CIRCLE };
+// Looks the same as Collider, however it will possibly be enhanced
 struct RenderComponent {
   Vector2 m_dimensions; // width/height or radius
   Entity m_entity;
-  RenderType m_type;
+  Shape m_shape;
   explicit RenderComponent(float width, float height)
-      : m_dimensions({width, height}), m_type(RenderType::REC) {}
+      : m_dimensions({width, height}), m_shape(Shape::RECTANGLE) {}
   explicit RenderComponent(float radius)
-      : m_dimensions({radius, radius}), m_type(RenderType::CIRCLE) {}
+      : m_dimensions({radius, radius}), m_shape(Shape::CIRCLE) {}
   ~RenderComponent() = default;
   RenderComponent(const RenderComponent &other) = delete;
   RenderComponent(RenderComponent &&other) noexcept = default;
@@ -94,6 +110,7 @@ extern std::vector<Entity> entities;
 
 inline SparseSet<PositionComponent> positions;
 inline SparseSet<VelocityComponent> velocities;
+inline SparseSet<ColliderComponent> colliders;
 inline SparseSet<TextComponent> texts;
 inline SparseSet<ForceComponent> forces;
 inline SparseSet<RenderComponent> renders;
@@ -107,6 +124,7 @@ void RenderSystem();
 void ResetSystem();
 void PositionSystem();
 void UISystem();
+void CollisionDetectionSystem();
 
 // TEMPLATES
 template <typename T, typename... Args> bool Add(Entity entity, Args &&...args) {
@@ -116,6 +134,8 @@ template <typename T, typename... Args> bool Add(Entity entity, Args &&...args) 
     return positions.Add(entity, std::move(component));
   } else if constexpr (std::is_same_v<T, VelocityComponent>) {
     return velocities.Add(entity, std::move(component));
+  } else if constexpr (std::is_same_v<T, ColliderComponent>) {
+    return colliders.Add(entity, std::move(component));
   } else if constexpr (std::is_same_v<T, TextComponent>) {
     return texts.Add(entity, std::move(component));
   } else if constexpr (std::is_same_v<T, RenderComponent>) {
@@ -134,6 +154,8 @@ template <typename T> void Remove(Entity entity) {
     positions.Remove(entity);
   } else if constexpr (std::is_same_v<T, VelocityComponent>) {
     velocities.Remove(entity);
+  } else if constexpr (std::is_same_v<T, ColliderComponent>) {
+    colliders.Remove(entity);
   } else if constexpr (std::is_same_v<T, TextComponent>) {
     texts.Remove(entity);
   } else if constexpr (std::is_same_v<T, RenderComponent>) {
@@ -150,6 +172,8 @@ template <typename T> T *Get(Entity entity) {
     return positions.Get(entity);
   } else if constexpr (std::is_same_v<T, VelocityComponent>) {
     return velocities.Get(entity);
+  } else if constexpr (std::is_same_v<T, ColliderComponent>) {
+    return colliders.Get(entity);
   } else if constexpr (std::is_same_v<T, TextComponent>) {
     return texts.Get(entity);
   } else if constexpr (std::is_same_v<T, RenderComponent>) {
