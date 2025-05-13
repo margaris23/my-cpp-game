@@ -2,6 +2,7 @@
 #include "fmt/core.h"
 #include "raylib.h"
 #include <functional>
+#include <optional>
 #include <string>
 
 namespace ECS {
@@ -13,8 +14,12 @@ std::vector<Entity> entities;
 // SparseSet::SparseSet<VelocityComponent> velocities;
 // SparseSet::SparseSet<TextComponent> texts;
 
+namespace {
+size_t entityCounter = 0;
+}
+
 Entity CreateEntity() {
-  size_t index = entities.size();
+  size_t index = entityCounter++;
   entities.push_back(index);
   return index;
 }
@@ -31,6 +36,9 @@ void DeleteEntity(Entity entity) {
   Remove<RenderComponent>(entity);
   Remove<ForceComponent>(entity);
   Remove<UIComponent>(entity);
+  Remove<HealthComponent>(entity);
+  Remove<DmgComponent>(entity);
+  Remove<GameStateComponent>(entity);
   // add more ...
 }
 
@@ -62,25 +70,10 @@ void RenderSystem() {
       // TODO: add more...
     }
   }
-
-  // ForEach<PositionComponent, TextComponent>(fn);
-
-  // DEBUG DATA
-  // const auto &forcesComponents = forces.dense;
-  // const auto &velocityComponents = velocities.dense;
-  //
-  // DrawText(std::to_string(forcesComponents.size()).c_str(), 10, 100, 20,
-  // BLUE); DrawText(std::to_string(velocityComponents.size()).c_str(), 10, 140,
-  // 20,
-  //          BLUE);
-  // DrawText(std::to_string(positions.dense.size()).c_str(), 10, 180, 20,
-  //          BLUE);
 }
 
 void PositionSystem() {
   for (auto &pos : positions.dense) {
-    // DrawText(std::to_string(pos.m_entity).c_str(), 200, 100, 20, BLUE);
-
     const auto force = forces.Get(pos.m_entity);
     auto velocity = velocities.Get(pos.m_entity);
 
@@ -99,50 +92,80 @@ void PositionSystem() {
   }
 }
 
-void UISystem() {
-  for (auto &widget : widgets.dense) {
-    auto widgetPos = positions.Get(widget.m_entity);
-    auto selectedWidgetPos = positions.Get(widget.m_selectedEntity);
+void CollisionDetectionSystem() {
+  const auto &positionComponents = positions.dense;
+  auto &colliderComps = colliders.dense;
 
-    if (widgetPos && selectedWidgetPos) {
-      widgetPos->m_value.x = selectedWidgetPos->m_value.x;
-      widgetPos->m_value.y = selectedWidgetPos->m_value.y;
+  for (size_t indexA = 0; indexA < colliderComps.size(); indexA++) {
+    for (size_t indexB = indexA + 1; indexB < colliders.dense.size(); indexB++) {
+      auto posA = positions.Get(colliderComps[indexA].m_entity);
+      auto posB = positions.Get(colliderComps[indexB].m_entity);
+
+      // Optimizations:
+      // Rectangle is expected to be our Spaceship,
+      // Circles are expected to be our Meteors
+      // Circles do not expect to collide each other so,
+      // Rectangle is expected to collide with only 1 Circle
+      if (Shape::RECTANGLE == colliderComps[indexA].m_shape) {
+        if (Shape::CIRCLE == colliderComps[indexB].m_shape) {
+          const auto &dimA = colliderComps[indexA].m_dimensions;
+
+          bool collides =
+              CheckCollisionCircleRec(posB->m_value, colliderComps[indexB].m_dimensions.x,
+                                      {posA->m_value.x, posA->m_value.y, dimA.x, dimA.y});
+
+          if (collides) {
+            // fmt::println("{} collides with {}", colliderComps[indexA].m_entity,
+            //              colliderComps[indexB].m_entity);
+            colliderComps[indexA].m_collided_with = colliderComps[indexB].m_entity;
+            colliderComps[indexB].m_collided_with = colliderComps[indexA].m_entity;
+
+            return; // see optimizations comment a few lines above
+          }
+        }
+      }
     }
-    // ECS::Add<ECS::PositionComponent>(s_SelectedBtn, H_CenterText("New Game") - padding,
-    // 100.f - padding); ECS::Add<ECS::RenderComponent>(s_SelectedBtn, textWidth + 2.f *
-    // padding, 20.f + 2 * padding);  // Rectangle
   }
 }
 
-void CollisionDetectionSystem() {
-  const auto &positionComponents = positions.dense;
-  const auto &colliderComponents = colliders.dense;
+void CollisionResolutionSystem() {
+  for (auto &collider : colliders.dense) {
+    if (collider.m_collided_with.has_value()) {
+      auto health = healths.Get(collider.m_entity);
+      auto dmg = dmgs.Get(collider.m_collided_with.value());
+      if (health && dmg) {
+        health->m_value -= dmg->m_value;
+        collider.m_collided_with.reset();
 
-  for (size_t indexA = 0; indexA < colliderComponents.size(); indexA++) {
-    for (size_t indexB = indexA + 1; indexB < colliders.dense.size(); indexB++) {
-      // if (colliderA.m_entity == colliderB.m_entity) {
-      //   continue;
-      // }
+        // Need to add Bounce physics
+        // Need to know: pos and dir ???
+        // auto pos = positions.Get(collider.m_entity);
+        // Add<ForceComponent>(collider.m_entity, -10.f, -10.f);
+      }
+    }
+  }
+}
 
-      const auto posA = positions.Get(colliderComponents[indexA].m_entity);
-      const auto posB = positions.Get(colliderComponents[indexB].m_entity);
+void UISystem() {
+  for (auto &widget : widgets.dense) {
+    auto widgetPos = positions.Get(widget.m_entity);
 
-      if (Shape::RECTANGLE == colliderComponents[indexA].m_shape) {
-        // fmt::println("Spaceship ({},{}) -> Meteor {} ({},{})", posA->m_value.x,
-        //              posA->m_value.y, colliderComponents[indexB].m_entity,
-        //              posB->m_value.x, posB->m_value.y);
+    // Handle selected widget logic ... Like a focus
+    if (widget.m_selectedEntity.has_value()) {
+      auto selectedWidgetPos = positions.Get(widget.m_selectedEntity.value());
 
-        if (Shape::CIRCLE == colliderComponents[indexB].m_shape) {
-          const auto &dimA = colliderComponents[indexA].m_dimensions;
-
-          bool collides = CheckCollisionCircleRec(
-              posB->m_value, colliderComponents[indexB].m_dimensions.x,
-              {posA->m_value.x, posA->m_value.y, dimA.x, dimA.y});
-
-          if (collides)
-            fmt::println("{} collides with {}", colliderComponents[indexA].m_entity,
-                         colliderComponents[indexB].m_entity);
-        }
+      if (widgetPos && selectedWidgetPos) {
+        widgetPos->m_value.x = selectedWidgetPos->m_value.x;
+        widgetPos->m_value.y = selectedWidgetPos->m_value.y;
+      }
+      // ECS::Add<ECS::PositionComponent>(s_SelectedBtn, H_CenterText("New Game") -
+      // padding, 100.f - padding); ECS::Add<ECS::RenderComponent>(s_SelectedBtn,
+      // textWidth + 2.f * padding, 20.f + 2 * padding);  // Rectangle
+    } else if (UIElement::BAR == widget.m_type) {
+      const auto state = stateValues.Get(widget.m_entity);
+      if (state) {
+        DrawRectangle(widgetPos->m_value.x, widgetPos->m_value.y, state->m_value * 10, 20,
+                      BLACK);
       }
     }
   }

@@ -6,16 +6,19 @@
 #include "sparse-set.hpp"
 #include <bitset>
 #include <cstdint>
+#include <optional>
 #include <type_traits>
 #include <typeindex>
 #include <unordered_map>
 #include <utility>
+#include <variant>
 #include <vector>
 
 namespace ECS {
 
 using Entity = size_t;
 
+// To be used later: to check whether an entity has a component faster
 constexpr uint8_t MAX_COMPONENTS = 16;
 using ComponentMask = std::bitset<MAX_COMPONENTS>;
 extern std::unordered_map<std::type_index, std::bitset<MAX_COMPONENTS>> s_typeToBitSetMap;
@@ -23,7 +26,14 @@ extern std::unordered_map<std::type_index, std::bitset<MAX_COMPONENTS>> s_typeTo
 template <typename T>
 using ComponentGroups = std::unordered_map<ComponentMask, SparseSet<T>>;
 
-enum class Shape { RECTANGLE, CIRCLE };
+enum class Shape {
+  RECTANGLE,
+  CIRCLE,
+};
+enum class UIElement {
+  TEXT,
+  BAR,
+};
 
 // static ComponentGroups groups; // Mask -> SparseSet<Components>
 
@@ -48,9 +58,10 @@ struct VelocityComponent {
 };
 
 struct ColliderComponent {
-  Vector2 m_dimensions; // width/height or radius
+  Vector2 m_dimensions; // width/height or radius based on shape
   Entity m_entity;
   Shape m_shape;
+  std::optional<Entity> m_collided_with;
   explicit ColliderComponent(float width, float height)
       : m_dimensions({width, height}), m_shape(Shape::RECTANGLE) {}
   explicit ColliderComponent(float radius)
@@ -82,9 +93,12 @@ struct ForceComponent {
 };
 
 struct UIComponent {
-  Entity m_selectedEntity;
+  UIElement m_type;
   Entity m_entity;
-  explicit UIComponent(Entity selectedEntity) : m_selectedEntity(selectedEntity) {}
+  std::optional<Entity> m_selectedEntity;
+  explicit UIComponent(UIElement type) : m_type(type) {}
+  explicit UIComponent(UIElement type, Entity selectedEntity)
+      : m_type(type), m_selectedEntity(selectedEntity) {}
   ~UIComponent() = default;
   UIComponent(const UIComponent &other) = delete;
   UIComponent(UIComponent &&other) noexcept = default;
@@ -92,8 +106,9 @@ struct UIComponent {
 };
 
 // Looks the same as Collider, however it will possibly be enhanced
+// RenderComponent is for primitive drawables
 struct RenderComponent {
-  Vector2 m_dimensions; // width/height or radius
+  Vector2 m_dimensions; // width/height or radius based on shape
   Entity m_entity;
   Shape m_shape;
   explicit RenderComponent(float width, float height)
@@ -106,6 +121,38 @@ struct RenderComponent {
   RenderComponent &operator=(RenderComponent &&rhs) noexcept = default;
 };
 
+struct HealthComponent {
+  float m_value;
+  Entity m_entity;
+  explicit HealthComponent(float health) : m_value(health) {}
+  ~HealthComponent() = default;
+  HealthComponent(const HealthComponent &other) = delete;
+  HealthComponent(HealthComponent &&other) noexcept = default;
+  HealthComponent &operator=(HealthComponent &&rhs) noexcept = default;
+};
+
+struct DmgComponent {
+  float m_value;
+  Entity m_entity;
+  explicit DmgComponent(float health) : m_value(health) {}
+  ~DmgComponent() = default;
+  DmgComponent(const DmgComponent &other) = delete;
+  DmgComponent(DmgComponent &&other) noexcept = default;
+  DmgComponent &operator=(DmgComponent &&rhs) noexcept = default;
+};
+
+using GameStateValue = float; // std::variant<float, int>;
+
+struct GameStateComponent {
+  GameStateValue m_value;
+  Entity m_entity;
+  explicit GameStateComponent(GameStateValue value) : m_value(value) {}
+  ~GameStateComponent() = default;
+  GameStateComponent(const GameStateComponent &other) = delete;
+  GameStateComponent(GameStateComponent &&other) noexcept = default;
+  GameStateComponent &operator=(GameStateComponent &&rhs) noexcept = default;
+};
+
 extern std::vector<Entity> entities;
 
 inline SparseSet<PositionComponent> positions;
@@ -115,6 +162,9 @@ inline SparseSet<TextComponent> texts;
 inline SparseSet<ForceComponent> forces;
 inline SparseSet<RenderComponent> renders;
 inline SparseSet<UIComponent> widgets;
+inline SparseSet<HealthComponent> healths;
+inline SparseSet<DmgComponent> dmgs;
+inline SparseSet<GameStateComponent> stateValues;
 
 Entity CreateEntity();
 
@@ -125,6 +175,7 @@ void ResetSystem();
 void PositionSystem();
 void UISystem();
 void CollisionDetectionSystem();
+void CollisionResolutionSystem();
 
 // TEMPLATES
 template <typename T, typename... Args> bool Add(Entity entity, Args &&...args) {
@@ -144,6 +195,12 @@ template <typename T, typename... Args> bool Add(Entity entity, Args &&...args) 
     return forces.Add(entity, std::move(component));
   } else if constexpr (std::is_same_v<T, UIComponent>) {
     return widgets.Add(entity, std::move(component));
+  } else if constexpr (std::is_same_v<T, HealthComponent>) {
+    return healths.Add(entity, std::move(component));
+  } else if constexpr (std::is_same_v<T, DmgComponent>) {
+    return dmgs.Add(entity, std::move(component));
+  } else if constexpr (std::is_same_v<T, GameStateComponent>) {
+    return stateValues.Add(entity, std::move(component));
   }
 
   return false;
@@ -164,6 +221,12 @@ template <typename T> void Remove(Entity entity) {
     forces.Remove(entity);
   } else if constexpr (std::is_same_v<T, UIComponent>) {
     widgets.Remove(entity);
+  } else if constexpr (std::is_same_v<T, HealthComponent>) {
+    healths.Remove(entity);
+  } else if constexpr (std::is_same_v<T, DmgComponent>) {
+    dmgs.Remove(entity);
+  } else if constexpr (std::is_same_v<T, GameStateComponent>) {
+    stateValues.Remove(entity);
   }
 }
 
@@ -182,7 +245,14 @@ template <typename T> T *Get(Entity entity) {
     return forces.Get(entity);
   } else if constexpr (std::is_same_v<T, UIComponent>) {
     return widgets.Get(entity);
+  } else if constexpr (std::is_same_v<T, HealthComponent>) {
+    return healths.Get(entity);
+  } else if constexpr (std::is_same_v<T, DmgComponent>) {
+    return dmgs.Get(entity);
+  } else if constexpr (std::is_same_v<T, GameStateComponent>) {
+    return stateValues.Get(entity);
   }
+
   return nullptr;
 }
 

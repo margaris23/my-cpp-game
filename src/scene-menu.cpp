@@ -4,6 +4,8 @@
 #include "scenes.hpp"
 
 static SceneEvent s_Event = SceneEvent::NONE;
+
+// TODO: change to GameStateComponent when impl
 static struct MenuState {
   ECS::Entity selected;
 } s_State;
@@ -56,7 +58,6 @@ void LoadMenu() {
 }
 
 void UpdateMenu(float delta) {
-  ECS::UISystem();
   ECS::PositionSystem();
 
   // Handle UI here ... for now
@@ -86,7 +87,10 @@ void UpdateMenu(float delta) {
   }
 }
 
-void DrawMenu() { ECS::RenderSystem(); }
+void DrawMenu() {
+  ECS::UISystem();
+  ECS::RenderSystem();
+}
 
 void UnloadMenu() {
   s_Event = SceneEvent::NONE;
