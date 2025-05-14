@@ -7,11 +7,11 @@
 #include <bitset>
 #include <cstdint>
 #include <optional>
+#include <string_view>
 #include <type_traits>
 #include <typeindex>
 #include <unordered_map>
 #include <utility>
-#include <variant>
 #include <vector>
 
 namespace ECS {
@@ -72,10 +72,11 @@ struct ColliderComponent {
   ColliderComponent &operator=(ColliderComponent &&rhs) noexcept = default;
 };
 
+// TODO: merge with UIComponent
 struct TextComponent {
   std::string m_value;
   Entity m_entity;
-  explicit TextComponent(std::string text) : m_value(text) {}
+  explicit TextComponent(std::string_view text) : m_value(text) {}
   ~TextComponent() = default;
   TextComponent(const TextComponent &other) = delete;
   TextComponent(TextComponent &&other) noexcept = default;
@@ -119,6 +120,10 @@ struct RenderComponent {
   RenderComponent(const RenderComponent &other) = delete;
   RenderComponent(RenderComponent &&other) noexcept = default;
   RenderComponent &operator=(RenderComponent &&rhs) noexcept = default;
+  bool IsVisible() {
+    return Shape::CIRCLE == m_shape && m_dimensions.x > 0.f ||
+           Shape::RECTANGLE == m_shape && m_dimensions.x > 0.f && m_dimensions.y > 0.f;
+  }
 };
 
 struct HealthComponent {
@@ -139,6 +144,18 @@ struct DmgComponent {
   DmgComponent(const DmgComponent &other) = delete;
   DmgComponent(DmgComponent &&other) noexcept = default;
   DmgComponent &operator=(DmgComponent &&rhs) noexcept = default;
+};
+
+struct WeaponComponent {
+  Entity m_shooter;
+  float m_max_length;
+  Entity m_entity;
+  explicit WeaponComponent(Entity shooter, float max_length)
+      : m_shooter(shooter), m_max_length(max_length) {}
+  ~WeaponComponent() = default;
+  WeaponComponent(const WeaponComponent &other) = delete;
+  WeaponComponent(WeaponComponent &&other) noexcept = default;
+  WeaponComponent &operator=(WeaponComponent &&rhs) noexcept = default;
 };
 
 using GameStateValue = float; // std::variant<float, int>;
@@ -165,6 +182,7 @@ inline SparseSet<UIComponent> widgets;
 inline SparseSet<HealthComponent> healths;
 inline SparseSet<DmgComponent> dmgs;
 inline SparseSet<GameStateComponent> stateValues;
+inline SparseSet<WeaponComponent> weapons;
 
 Entity CreateEntity();
 
@@ -201,6 +219,8 @@ template <typename T, typename... Args> bool Add(Entity entity, Args &&...args) 
     return dmgs.Add(entity, std::move(component));
   } else if constexpr (std::is_same_v<T, GameStateComponent>) {
     return stateValues.Add(entity, std::move(component));
+  } else if constexpr (std::is_same_v<T, WeaponComponent>) {
+    return weapons.Add(entity, std::move(component));
   }
 
   return false;
@@ -227,6 +247,8 @@ template <typename T> void Remove(Entity entity) {
     dmgs.Remove(entity);
   } else if constexpr (std::is_same_v<T, GameStateComponent>) {
     stateValues.Remove(entity);
+  } else if constexpr (std::is_same_v<T, WeaponComponent>) {
+    weapons.Remove(entity);
   }
 }
 
@@ -251,6 +273,8 @@ template <typename T> T *Get(Entity entity) {
     return dmgs.Get(entity);
   } else if constexpr (std::is_same_v<T, GameStateComponent>) {
     return stateValues.Get(entity);
+  } else if constexpr (std::is_same_v<T, WeaponComponent>) {
+    return weapons.Get(entity);
   }
 
   return nullptr;

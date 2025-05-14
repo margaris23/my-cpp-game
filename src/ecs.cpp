@@ -39,6 +39,7 @@ void DeleteEntity(Entity entity) {
   Remove<HealthComponent>(entity);
   Remove<DmgComponent>(entity);
   Remove<GameStateComponent>(entity);
+  Remove<WeaponComponent>(entity);
   // add more ...
 }
 
@@ -52,6 +53,7 @@ void RenderSystem() {
   const auto &textComponents = texts.dense;
   const auto &renderComponents = renders.dense;
 
+  // FIXME: perf - loop through texts, renders seperately
   for (const auto &pos : positions.dense) {
     // TEXTS
     const auto text = texts.Get(pos.m_entity);
@@ -60,7 +62,7 @@ void RenderSystem() {
     }
     // SHAPES
     const auto render = renders.Get(pos.m_entity);
-    if (render) {
+    if (render && render->IsVisible()) {
       if (Shape::RECTANGLE == render->m_shape) {
         DrawRectangleLines(pos.m_value.x, pos.m_value.y, render->m_dimensions.x,
                            render->m_dimensions.y, BLACK);
@@ -76,6 +78,7 @@ void PositionSystem() {
   for (auto &pos : positions.dense) {
     const auto force = forces.Get(pos.m_entity);
     auto velocity = velocities.Get(pos.m_entity);
+    auto weapon = weapons.Get(pos.m_entity);
 
     if (force) {
       if (velocity) {
@@ -88,40 +91,53 @@ void PositionSystem() {
     } else if (velocity) {
       pos.m_value.x += velocity->m_value.x;
       pos.m_value.y += velocity->m_value.y;
+    } else if (weapon) {
+      const auto shooterPos = positions.Get(weapon->m_shooter);
+      pos.m_value = shooterPos->m_value;
     }
   }
+}
+
+bool HandleCollision(ColliderComponent &colA, ColliderComponent &colB,
+                     const PositionComponent &posA, const PositionComponent &posB) {
+  const auto &dimA = colA.m_dimensions;
+
+  bool collides =
+      CheckCollisionCircleRec(posB.m_value, colB.m_dimensions.x,
+                              {posA.m_value.x, posA.m_value.y, dimA.x, dimA.y});
+
+  if (collides) {
+    colA.m_collided_with = colB.m_entity;
+    colB.m_collided_with = colA.m_entity;
+    return true;
+  }
+
+  return false;
 }
 
 void CollisionDetectionSystem() {
   const auto &positionComponents = positions.dense;
   auto &colliderComps = colliders.dense;
 
-  for (size_t indexA = 0; indexA < colliderComps.size(); indexA++) {
+  for (size_t indexA = 0; indexA < colliderComps.size() - 1; indexA++) {
     for (size_t indexB = indexA + 1; indexB < colliders.dense.size(); indexB++) {
       auto posA = positions.Get(colliderComps[indexA].m_entity);
       auto posB = positions.Get(colliderComps[indexB].m_entity);
 
       // Optimizations:
-      // Rectangle is expected to be our Spaceship,
+      // Rectangle is expected to be our Spaceship or its MiningBeam (weapon),
       // Circles are expected to be our Meteors
       // Circles do not expect to collide each other so,
       // Rectangle is expected to collide with only 1 Circle
-      if (Shape::RECTANGLE == colliderComps[indexA].m_shape) {
-        if (Shape::CIRCLE == colliderComps[indexB].m_shape) {
-          const auto &dimA = colliderComps[indexA].m_dimensions;
-
-          bool collides =
-              CheckCollisionCircleRec(posB->m_value, colliderComps[indexB].m_dimensions.x,
-                                      {posA->m_value.x, posA->m_value.y, dimA.x, dimA.y});
-
-          if (collides) {
-            // fmt::println("{} collides with {}", colliderComps[indexA].m_entity,
-            //              colliderComps[indexB].m_entity);
-            colliderComps[indexA].m_collided_with = colliderComps[indexB].m_entity;
-            colliderComps[indexB].m_collided_with = colliderComps[indexA].m_entity;
-
-            return; // see optimizations comment a few lines above
-          }
+      if (Shape::RECTANGLE == colliderComps[indexA].m_shape &&
+          Shape::CIRCLE == colliderComps[indexB].m_shape) {
+        if (HandleCollision(colliderComps[indexA], colliderComps[indexB], *posA, *posB)) {
+          continue;
+        }
+      } else if (Shape::RECTANGLE == colliderComps[indexB].m_shape &&
+                 Shape::CIRCLE == colliderComps[indexA].m_shape) {
+        if (HandleCollision(colliderComps[indexB], colliderComps[indexA], *posB, *posA)) {
+          continue;
         }
       }
     }
@@ -135,6 +151,12 @@ void CollisionResolutionSystem() {
       auto dmg = dmgs.Get(collider.m_collided_with.value());
       if (health && dmg) {
         health->m_value -= dmg->m_value;
+
+        // constraint
+        if (health->m_value < 0) {
+          health->m_value = 0;
+        }
+
         collider.m_collided_with.reset();
 
         // Need to add Bounce physics
@@ -168,6 +190,12 @@ void UISystem() {
                       BLACK);
       }
     }
+    // else if (UIElement::TEXT == widget.m_type) {
+    //   const auto text = texts.Get(widget.m_entity);
+    //   if (text) {
+    //     DrawText(text->m_value.c_str(), widgetPos->m_value.x, widgetPos->m_value.y, 20, BLACK);
+    //   }
+    // }
   }
 }
 

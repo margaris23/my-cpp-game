@@ -47,8 +47,6 @@ int main(void) {
 
   return 0;
 }
-std::vector<Vector2> points = {
-    {300.f, 300.f}, {300.f, 320.f}, {320.f, 320.f}, {320.f, 300.f}};
 
 // Update and draw game frame
 static void UpdateDrawFrame(void) {
