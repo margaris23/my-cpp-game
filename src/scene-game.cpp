@@ -1,6 +1,7 @@
 #include "ecs.hpp"
 #include "fmt/core.h"
 #include "raylib.h"
+#include "raymath.h"
 #include "scenes.hpp"
 #include <algorithm>
 #include <random>
@@ -10,11 +11,14 @@ constexpr static int MAX_METEORS = 5;
 constexpr static int MIN_METEOR_SIZE = 10;
 constexpr static int MAX_METEOR_SIZE = 30;
 constexpr static float METEORS_WINDOW_PADDING = 50.f;
+constexpr static float METEOR_DMG = 0.1f;
 
 constexpr static Vector2 SPACESHIP_SIZE{40.f, 20.f}; // TODO: change dimensions
 constexpr static float SPACESHIP_INITIAL_HEALTH = 10.f;
 constexpr static float SPACESHIP_INITIAL_LIVES = 3.f;
 constexpr static float WEAPON_SIZE = 10.f;
+constexpr static float WEAPON_DMG = 1.f;
+constexpr static float WEAPON_MAX_DISTANCE = 60.f;
 
 static SceneEvent s_Event = SceneEvent::NONE;
 
@@ -42,12 +46,13 @@ void LoadGame() {
 
   // Randomizers
   std::uniform_int_distribution<int> num_of_meteors(1, MAX_METEORS);
-  std::uniform_real_distribution<float> dist_x(meteors_offset,
-                                               GetScreenWidth() - meteors_offset);
-  std::uniform_real_distribution<float> dist_y(meteors_offset,
-                                               GetScreenHeight() - meteors_offset);
-  std::uniform_real_distribution<float> dist_size(MIN_METEOR_SIZE, MAX_METEOR_SIZE);
-  // std::uniform_int_distribution<int> dist_color(0, 50);
+  std::uniform_real_distribution<float> rnd_x(meteors_offset,
+                                              GetScreenWidth() - meteors_offset);
+  std::uniform_real_distribution<float> rnd_y(meteors_offset,
+                                              GetScreenHeight() - meteors_offset);
+  std::uniform_real_distribution<float> rnd_size(MIN_METEOR_SIZE, MAX_METEOR_SIZE);
+  std::uniform_real_distribution<float> rnd_velocity(-1.f, 1.f);
+  // std::uniform_int_distribution<int> rnd_color(0, 50);
 
   // Our Hero
   s_spaceShip = ECS::CreateEntity();
@@ -56,6 +61,7 @@ void LoadGame() {
   ECS::Add<ECS::ColliderComponent>(s_spaceShip, SPACESHIP_SIZE.x, SPACESHIP_SIZE.y);
   ECS::Add<ECS::DmgComponent>(s_spaceShip, 0.1f);
   ECS::Add<ECS::HealthComponent>(s_spaceShip, SPACESHIP_INITIAL_HEALTH); // for collisions
+  ECS::Add<ECS::ForceComponent>(s_spaceShip, 0.f, 0.f); // Initialize empty force
 
   // State: Spaceship health (UI Entity)
   s_spaceshipHealth = ECS::CreateEntity();
@@ -78,21 +84,21 @@ void LoadGame() {
   // TODO: create before spaceship (order matters when rendering)
   s_miningBeam = ECS::CreateEntity();
   ECS::Add<ECS::PositionComponent>(s_miningBeam, 0.f, 0.f);
-  float weapon_max_distance = 60.f;
-  float weapon_fire_dmg = 1.f;
-  ECS::Add<ECS::WeaponComponent>(s_miningBeam, s_spaceShip, weapon_max_distance);
-  ECS::Add<ECS::DmgComponent>(s_miningBeam, weapon_fire_dmg);
+  ECS::Add<ECS::WeaponComponent>(s_miningBeam, s_spaceShip, WEAPON_MAX_DISTANCE);
+  ECS::Add<ECS::DmgComponent>(s_miningBeam, WEAPON_DMG);
 
   // Generate Meteors
   for (int i = 0; i < num_of_meteors(gen); i++) {
     meteors.push_back(ECS::CreateEntity());
     ECS::Entity meteor = meteors.back();
-    ECS::Add<ECS::PositionComponent>(meteor, dist_x(gen), dist_y(gen));
-    float radius = dist_size(gen);
+    ECS::Add<ECS::PositionComponent>(meteor, rnd_x(gen), rnd_y(gen));
+    // TODO: bigger asteroids should move slower
+    ECS::Add<ECS::VelocityComponent>(meteor, rnd_velocity(gen), rnd_velocity(gen));
+    float radius = rnd_size(gen);
     ECS::Add<ECS::RenderComponent>(meteor, radius);
     ECS::Add<ECS::ColliderComponent>(meteor, radius);
     ECS::Add<ECS::HealthComponent>(meteor, radius); // bigger means more health
-    ECS::Add<ECS::DmgComponent>(meteor, 0.1f);
+    ECS::Add<ECS::DmgComponent>(meteor, METEOR_DMG);
   }
 
   fmt::println("GAME LOADED!");
@@ -111,18 +117,26 @@ void UpdateGame(float delta) {
 
   // INPUT Testing
   // TODO: update force in order to support diagonal movement
-  // TODO: implementa force accumulator
+  // TODO: implement a force accumulator
+  auto force = ECS::Get<ECS::ForceComponent>(s_spaceShip);
+  force->m_value.x = 0;
+  force->m_value.y = 0;
+
   if (IsKeyDown(KEY_RIGHT)) {
-    ECS::Add<ECS::ForceComponent>(s_spaceShip, 5.f, 0.f);
-  } else if (IsKeyDown(KEY_LEFT)) {
-    ECS::Add<ECS::ForceComponent>(s_spaceShip, -5.f, 0.f);
-  } else if (IsKeyDown(KEY_UP)) {
-    ECS::Add<ECS::ForceComponent>(s_spaceShip, 0.f, -5.f);
-  } else if (IsKeyDown(KEY_DOWN)) {
-    ECS::Add<ECS::ForceComponent>(s_spaceShip, 0.f, 5.f);
-  } else {
-    ECS::Remove<ECS::ForceComponent>(s_spaceShip);
+    force->m_value.x = 1.f;
   }
+  if (IsKeyDown(KEY_LEFT)) {
+    force->m_value.x = -1.f;
+  }
+  if (IsKeyDown(KEY_UP)) {
+    force->m_value.y = -1.f;
+  }
+  if (IsKeyDown(KEY_DOWN)) {
+    force->m_value.y = 1.f;
+  }
+  force->m_value = Vector2Normalize(force->m_value);
+  force->m_value.x *= 5.f;
+  force->m_value.y *= 5.f;
 
   if (IsKeyDown(KEY_SPACE)) {
     if (!s_isFiring) {

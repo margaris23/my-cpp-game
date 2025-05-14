@@ -75,6 +75,9 @@ void RenderSystem() {
 }
 
 void PositionSystem() {
+  float screen_width = GetScreenWidth();
+  float screen_height = GetScreenHeight();
+
   for (auto &pos : positions.dense) {
     const auto force = forces.Get(pos.m_entity);
     auto velocity = velocities.Get(pos.m_entity);
@@ -94,6 +97,19 @@ void PositionSystem() {
     } else if (weapon) {
       const auto shooterPos = positions.Get(weapon->m_shooter);
       pos.m_value = shooterPos->m_value;
+    }
+
+    // ideally, size should be included
+    if (pos.m_value.x < -30.f) {
+      pos.m_value.x = screen_width;
+    } else if (pos.m_value.x > screen_width + 30.f) {
+      pos.m_value.x = 0;
+    }
+
+    if (pos.m_value.y < -30.f) {
+      pos.m_value.y = screen_height;
+    } else if (pos.m_value.y > screen_height + 30.f) {
+      pos.m_value.y = 0;
     }
   }
 }
@@ -193,7 +209,8 @@ void UISystem() {
     // else if (UIElement::TEXT == widget.m_type) {
     //   const auto text = texts.Get(widget.m_entity);
     //   if (text) {
-    //     DrawText(text->m_value.c_str(), widgetPos->m_value.x, widgetPos->m_value.y, 20, BLACK);
+    //     DrawText(text->m_value.c_str(), widgetPos->m_value.x, widgetPos->m_value.y, 20,
+    //     BLACK);
     //   }
     // }
   }
