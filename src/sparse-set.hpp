@@ -1,7 +1,6 @@
 #ifndef SPARSE_SET_H
 #define SPARSE_SET_H
 
-#include "fmt/core.h"
 #include <climits>
 #include <cstddef>
 #include <utility>
@@ -63,7 +62,7 @@ public:
       sparse[last_items_entity] = index;
       sparse[entity] = EMPTY;
       dense.pop_back();
-      fmt::println("\t{} -> {} REMOVED", typeid(T).name(), dense.size());
+      // fmt::println("\t{} -> {} REMOVED", typeid(T).name(), dense.size());
     }
   }
 

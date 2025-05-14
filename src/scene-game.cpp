@@ -6,12 +6,14 @@
 #include <random>
 #include <vector>
 
-static constexpr int MAX_METEORS = 5;
-static constexpr int MIN_METEOR_SIZE = 10;
-static constexpr int MAX_METEOR_SIZE = 30;
+constexpr static int MAX_METEORS = 5;
+constexpr static int MIN_METEOR_SIZE = 10;
+constexpr static int MAX_METEOR_SIZE = 30;
+constexpr static float METEORS_WINDOW_PADDING = 50.f;
 
 constexpr static Vector2 SPACESHIP_SIZE{40.f, 20.f}; // TODO: change dimensions
 constexpr static float SPACESHIP_INITIAL_HEALTH = 10.f;
+constexpr static float SPACESHIP_INITIAL_LIVES = 3.f;
 constexpr static float WEAPON_SIZE = 10.f;
 
 static SceneEvent s_Event = SceneEvent::NONE;
@@ -22,27 +24,28 @@ static std::mt19937 gen(rd());
 
 // STATE
 enum class GameState { PLAY, PAUSE, WIN, LOST };
-
-static ECS::Entity s_spaceshipHealth;
-static ECS::Entity s_spaceshipLives;
 static bool s_isFiring = false;
 static GameState s_state = GameState::PLAY;
 
-// Objects
+// ENTITIES
+static ECS::Entity s_spaceshipHealth;
+static ECS::Entity s_spaceshipLives;
 static ECS::Entity s_spaceShip;
 static std::vector<ECS::Entity> meteors;
 static ECS::Entity s_miningBeam;
+static ECS::Entity s_score;
 
 void LoadGame() {
   float screen_cw = GetScreenWidth() / 2.f;
   float screen_ch = GetScreenHeight() / 2.f;
+  float meteors_offset = MAX_METEOR_SIZE + METEORS_WINDOW_PADDING;
 
   // Randomizers
   std::uniform_int_distribution<int> num_of_meteors(1, MAX_METEORS);
-  std::uniform_real_distribution<float> dist_x(MAX_METEOR_SIZE,
-                                               GetScreenWidth() - MAX_METEOR_SIZE);
-  std::uniform_real_distribution<float> dist_y(MAX_METEOR_SIZE,
-                                               GetScreenHeight() - MAX_METEOR_SIZE);
+  std::uniform_real_distribution<float> dist_x(meteors_offset,
+                                               GetScreenWidth() - meteors_offset);
+  std::uniform_real_distribution<float> dist_y(meteors_offset,
+                                               GetScreenHeight() - meteors_offset);
   std::uniform_real_distribution<float> dist_size(MIN_METEOR_SIZE, MAX_METEOR_SIZE);
   // std::uniform_int_distribution<int> dist_color(0, 50);
 
@@ -61,10 +64,15 @@ void LoadGame() {
   ECS::Add<ECS::PositionComponent>(s_spaceshipHealth, 10.f, 10.f);
 
   s_spaceshipLives = ECS::CreateEntity();
-  ECS::Add<ECS::GameStateComponent>(s_spaceshipLives, 3.f);
+  ECS::Add<ECS::GameStateComponent>(s_spaceshipLives, SPACESHIP_INITIAL_LIVES);
   ECS::Add<ECS::TextComponent>(s_spaceshipLives, "3 Lives");
   ECS::Add<ECS::PositionComponent>(
       s_spaceshipLives, GetScreenWidth() - MeasureText(" Lives", 20) - 20.f, 10.f);
+
+  s_score = ECS::CreateEntity();
+  ECS::Add<ECS::GameStateComponent>(s_score, 0.f);
+  ECS::Add<ECS::TextComponent>(s_score, "0");
+  ECS::Add<ECS::PositionComponent>(s_score, screen_cw - 10.f, 10.f);
 
   // Spaceship's Mining Beam
   // TODO: create before spaceship (order matters when rendering)
@@ -138,14 +146,39 @@ void UpdateGame(float delta) {
 
   ECS::PositionSystem();
   ECS::CollisionDetectionSystem();
+
+  // Sync meteor health, decide on score (Score System ???)
+  auto score = ECS::Get<ECS::GameStateComponent>(s_score);
+  for (const auto &meteor : meteors) {
+    const auto &collider = ECS::Get<ECS::ColliderComponent>(meteor);
+    if (collider->m_collided_with.has_value()) {
+      // Let's earn 1 point for every hit for now....
+      ++score->m_value;
+    }
+  }
+  auto score_text = ECS::Get<ECS::TextComponent>(s_score);
+  score_text->m_value = fmt::format("{}", score->m_value);
+
   ECS::CollisionResolutionSystem();
 
+  // Kill meteors with zero health
+  for (std::vector<ECS::Entity>::iterator it = meteors.begin(); it != meteors.end();) {
+    const auto meteor_health = ECS::Get<ECS::HealthComponent>(*it);
+    if (meteor_health->m_value == 0) {
+      ECS::DeleteEntity(*it);
+      it = meteors.erase(it);
+    } else {
+      ++it;
+    }
+  }
+
+  // UISystem-UPDATE ????
   // Sync state with components i.e Spaceship.health -> SpaceShipHealth.state
   const auto health = ECS::Get<ECS::HealthComponent>(s_spaceShip);
   auto state = ECS::Get<ECS::GameStateComponent>(s_spaceshipHealth);
   state->m_value = health->m_value;
 
-  // Sync health/lives
+  // Sync Spaceship health/lives (HealthSystem ???)
   if (health->m_value == 0) {
     auto spaceship_lives = ECS::Get<ECS::GameStateComponent>(s_spaceshipLives);
     --spaceship_lives->m_value;
@@ -198,6 +231,7 @@ void UnloadGame() {
   ECS::DeleteEntity(s_spaceShip);
   ECS::DeleteEntity(s_spaceshipHealth);
   ECS::DeleteEntity(s_spaceshipLives);
+  ECS::DeleteEntity(s_score);
   ECS::DeleteEntity(s_miningBeam);
   std::for_each(meteors.begin(), meteors.end(),
                 [](auto meteor) { ECS::DeleteEntity(meteor); });
