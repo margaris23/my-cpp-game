@@ -25,7 +25,15 @@ void LoadMenu() {
   float screen_cw = GetScreenWidth() / 2.f;
   float screen_ch = GetScreenHeight() / 2.f;
 
-  fmt::println("CURRENT POSITIONS LENGTH -- {} --", ECS::positions.dense.size());
+  s_SelectedBtn = ECS::CreateEntity();
+
+  int textWidth = MeasureText("New Game", 20);
+  float padding = 10.f;
+  ECS::Add<ECS::PositionComponent>(s_SelectedBtn, H_CenterText("New Game") - padding,
+                                   100.f - padding);
+  // Rectangle { width, height }
+  ECS::Add<ECS::RenderComponent>(s_SelectedBtn, BLACK, textWidth + 2.f * padding,
+                                 20.f + 2 * padding);
 
   s_NewGameBtn = ECS::CreateEntity();
   ECS::Add<ECS::PositionComponent>(s_NewGameBtn, H_CenterText("New Game"), 100.f);
@@ -42,16 +50,6 @@ void LoadMenu() {
   s_ExitBtn = ECS::CreateEntity();
   ECS::Add<ECS::PositionComponent>(s_ExitBtn, H_CenterText("Exit"), 250.f);
   ECS::Add<ECS::TextComponent>(s_ExitBtn, "Exit");
-
-  s_SelectedBtn = ECS::CreateEntity();
-
-  int textWidth = MeasureText("New Game", 20);
-  float padding = 10.f;
-  ECS::Add<ECS::PositionComponent>(s_SelectedBtn, H_CenterText("New Game") - padding,
-                                   100.f - padding);
-  // Rectangle { width, height }
-  ECS::Add<ECS::RenderComponent>(s_SelectedBtn, textWidth + 2.f * padding,
-                                 20.f + 2 * padding);
 
   // UPDATE MENU STATE
   s_State.selected = 0;

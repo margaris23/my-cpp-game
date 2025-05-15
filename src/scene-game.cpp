@@ -2,14 +2,16 @@
 #include "fmt/core.h"
 #include "raylib.h"
 #include "raymath.h"
+#include "reasings.h"
 #include "scenes.hpp"
 #include <algorithm>
 #include <random>
 #include <vector>
 
+constexpr static int MIN_METEORS = 3;
 constexpr static int MAX_METEORS = 5;
-constexpr static int MIN_METEOR_SIZE = 10;
-constexpr static int MAX_METEOR_SIZE = 30;
+constexpr static int MIN_METEOR_SIZE = 20;
+constexpr static int MAX_METEOR_SIZE = 50;
 constexpr static float METEORS_WINDOW_PADDING = 50.f;
 constexpr static float METEOR_DMG = 0.1f;
 
@@ -29,6 +31,7 @@ static std::mt19937 gen(rd());
 // STATE
 enum class GameState { PLAY, PAUSE, WIN, LOST };
 static bool s_isFiring = false;
+static float s_firingDuration = 0.f;
 static GameState s_state = GameState::PLAY;
 
 // ENTITIES
@@ -45,19 +48,32 @@ void LoadGame() {
   float meteors_offset = MAX_METEOR_SIZE + METEORS_WINDOW_PADDING;
 
   // Randomizers
-  std::uniform_int_distribution<int> num_of_meteors(1, MAX_METEORS);
+  std::uniform_int_distribution<int> num_of_meteors(MIN_METEORS, MAX_METEORS);
   std::uniform_real_distribution<float> rnd_x(meteors_offset,
                                               GetScreenWidth() - meteors_offset);
   std::uniform_real_distribution<float> rnd_y(meteors_offset,
                                               GetScreenHeight() - meteors_offset);
   std::uniform_real_distribution<float> rnd_size(MIN_METEOR_SIZE, MAX_METEOR_SIZE);
   std::uniform_real_distribution<float> rnd_velocity(-1.f, 1.f);
-  // std::uniform_int_distribution<int> rnd_color(0, 50);
+
+  // Generate Meteors
+  for (int i = 0; i < num_of_meteors(gen); i++) {
+    meteors.push_back(ECS::CreateEntity());
+    ECS::Entity meteor = meteors.back();
+    ECS::Add<ECS::PositionComponent>(meteor, rnd_x(gen), rnd_y(gen));
+    // TODO: bigger asteroids should move slower
+    ECS::Add<ECS::VelocityComponent>(meteor, rnd_velocity(gen), rnd_velocity(gen));
+    float radius = rnd_size(gen);
+    ECS::Add<ECS::RenderComponent>(meteor, BLACK, radius);
+    ECS::Add<ECS::ColliderComponent>(meteor, radius);
+    ECS::Add<ECS::HealthComponent>(meteor, radius); // bigger means more health
+    ECS::Add<ECS::DmgComponent>(meteor, METEOR_DMG);
+  }
 
   // Our Hero
   s_spaceShip = ECS::CreateEntity();
   ECS::Add<ECS::PositionComponent>(s_spaceShip, screen_cw, screen_ch);
-  ECS::Add<ECS::RenderComponent>(s_spaceShip, SPACESHIP_SIZE.x, SPACESHIP_SIZE.y);
+  ECS::Add<ECS::RenderComponent>(s_spaceShip, BLACK, SPACESHIP_SIZE.x, SPACESHIP_SIZE.y);
   ECS::Add<ECS::ColliderComponent>(s_spaceShip, SPACESHIP_SIZE.x, SPACESHIP_SIZE.y);
   ECS::Add<ECS::DmgComponent>(s_spaceShip, 0.1f);
   ECS::Add<ECS::HealthComponent>(s_spaceShip, SPACESHIP_INITIAL_HEALTH); // for collisions
@@ -87,20 +103,6 @@ void LoadGame() {
   ECS::Add<ECS::WeaponComponent>(s_miningBeam, s_spaceShip, WEAPON_MAX_DISTANCE);
   ECS::Add<ECS::DmgComponent>(s_miningBeam, WEAPON_DMG);
 
-  // Generate Meteors
-  for (int i = 0; i < num_of_meteors(gen); i++) {
-    meteors.push_back(ECS::CreateEntity());
-    ECS::Entity meteor = meteors.back();
-    ECS::Add<ECS::PositionComponent>(meteor, rnd_x(gen), rnd_y(gen));
-    // TODO: bigger asteroids should move slower
-    ECS::Add<ECS::VelocityComponent>(meteor, rnd_velocity(gen), rnd_velocity(gen));
-    float radius = rnd_size(gen);
-    ECS::Add<ECS::RenderComponent>(meteor, radius);
-    ECS::Add<ECS::ColliderComponent>(meteor, radius);
-    ECS::Add<ECS::HealthComponent>(meteor, radius); // bigger means more health
-    ECS::Add<ECS::DmgComponent>(meteor, METEOR_DMG);
-  }
-
   fmt::println("GAME LOADED!");
 }
 
@@ -116,7 +118,6 @@ void UpdateGame(float delta) {
   }
 
   // INPUT Testing
-  // TODO: update force in order to support diagonal movement
   // TODO: implement a force accumulator
   auto force = ECS::Get<ECS::ForceComponent>(s_spaceShip);
   force->m_value.x = 0;
@@ -139,14 +140,25 @@ void UpdateGame(float delta) {
   force->m_value.y *= 5.f;
 
   if (IsKeyDown(KEY_SPACE)) {
+    const auto &weapon = ECS::Get<ECS::WeaponComponent>(s_miningBeam);
     if (!s_isFiring) {
       s_isFiring = true;
-      const auto &weapon = ECS::Get<ECS::WeaponComponent>(s_miningBeam);
-      ECS::Add<ECS::ColliderComponent>(s_miningBeam, WEAPON_SIZE, weapon->m_max_length);
-      ECS::Add<ECS::RenderComponent>(s_miningBeam, WEAPON_SIZE, weapon->m_max_length);
+      s_firingDuration = 0;
+      ECS::Add<ECS::ColliderComponent>(s_miningBeam, WEAPON_SIZE, 10.f);
+      ECS::Add<ECS::RenderComponent>(s_miningBeam, BROWN, WEAPON_SIZE, 10.f);
+    } else if (s_firingDuration < 24.f) {
+      ++s_firingDuration;
+      // Ease(now, start, max_change, duration)
+      float tween =
+          EaseLinearIn(s_firingDuration, 10.f, weapon->m_max_length - 10.f, 24.f);
+      auto beam_collider = ECS::Get<ECS::ColliderComponent>(s_miningBeam);
+      auto beam_render = ECS::Get<ECS::RenderComponent>(s_miningBeam);
+      beam_collider->m_dimensions.y = tween;
+      beam_render->m_dimensions.y = tween;
     }
   } else if (s_isFiring) {
     s_isFiring = false;
+    s_firingDuration = 0;
     ECS::Remove<ECS::RenderComponent>(s_miningBeam);
     ECS::Remove<ECS::ColliderComponent>(s_miningBeam);
   }
@@ -175,15 +187,25 @@ void UpdateGame(float delta) {
 
   ECS::CollisionResolutionSystem();
 
-  // Kill meteors with zero health
+  // Meteors Updates
   for (std::vector<ECS::Entity>::iterator it = meteors.begin(); it != meteors.end();) {
+    // Kill meteors with zero health
     const auto meteor_health = ECS::Get<ECS::HealthComponent>(*it);
     if (meteor_health->m_value == 0) {
       ECS::DeleteEntity(*it);
       it = meteors.erase(it);
-    } else {
-      ++it;
+      continue;
     }
+
+    // Update size based on health
+    auto render = ECS::Get<ECS::RenderComponent>(*it);
+    if (meteor_health->m_value > 10.f) {
+      render->m_dimensions.x = meteor_health->m_value;
+    } else {
+      render->m_dimensions.x = 10.f;
+    }
+
+    ++it;
   }
 
   // UISystem-UPDATE ????
@@ -212,17 +234,34 @@ void UpdateGame(float delta) {
 }
 
 void DrawGame() {
+
   ECS::UISystem();
+
+  // TEST PLANETS
+  // DrawCircleLinesV({300.f, 300.f}, 80.f, BLACK);
+  // DrawCircleSectorLines({500.f, 200.f}, 60.f, 0, 180.f, 16, BLACK);
+  // DrawSphereWires({100.f, 100.f, 0.f}, 20.f, 16, 4, BLACK);
+  // DrawSphereEx({200.f, 200.f, 0.f}, 50.f, 16, 4, BLACK);
+
+  // DrawLineStrip(shipPoints.data(), shipPoints.size(), BLACK);
+
   ECS::RenderSystem();
 
+  // DrawText(TextFormat("%f", s_firingDuration), 0.f, GetScreenHeight() - 30.f, 20, RED);
+
+  // OVERLAY
+  // DrawRectangleLines(5.f, 5.f, GetScreenWidth() - 10.f, GetScreenHeight() - 10.f,
+  // BLACK); DrawRectangle(15.f, 15.f, GetScreenWidth() - 30.f, GetScreenHeight() - 30.f,
+  // RED);
+
   // Render Meteors Healths for DEBUG
-  for (const auto &meteor : meteors) {
-    const auto &health = ECS::Get<ECS::HealthComponent>(meteor);
-    const auto &pos = ECS::Get<ECS::PositionComponent>(meteor);
-    const auto &render = ECS::Get<ECS::RenderComponent>(meteor);
-    DrawRectangle(pos->m_value.x + render->m_dimensions.x,
-                  pos->m_value.y + render->m_dimensions.x, health->m_value, 10, BLACK);
-  }
+  // for (const auto &meteor : meteors) {
+  //   const auto &health = ECS::Get<ECS::HealthComponent>(meteor);
+  //   const auto &pos = ECS::Get<ECS::PositionComponent>(meteor);
+  //   const auto &render = ECS::Get<ECS::RenderComponent>(meteor);
+  //   DrawRectangle(pos->m_value.x + render->m_dimensions.x,
+  //                 pos->m_value.y + render->m_dimensions.x, health->m_value, 10, BLACK);
+  // }
 
   // DEBUG
   // const auto &collider = ECS::Get<ECS::ColliderComponent>(s_miningBeam);

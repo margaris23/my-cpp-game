@@ -109,13 +109,14 @@ struct UIComponent {
 // Looks the same as Collider, however it will possibly be enhanced
 // RenderComponent is for primitive drawables
 struct RenderComponent {
+  Color m_color;
   Vector2 m_dimensions; // width/height or radius based on shape
   Entity m_entity;
   Shape m_shape;
-  explicit RenderComponent(float width, float height)
-      : m_dimensions({width, height}), m_shape(Shape::RECTANGLE) {}
-  explicit RenderComponent(float radius)
-      : m_dimensions({radius, radius}), m_shape(Shape::CIRCLE) {}
+  explicit RenderComponent(Color color, float width, float height)
+      : m_color(color), m_dimensions({width, height}), m_shape(Shape::RECTANGLE) {}
+  explicit RenderComponent(Color color, float radius)
+      : m_color(color), m_dimensions({radius, radius}), m_shape(Shape::CIRCLE) {}
   ~RenderComponent() = default;
   RenderComponent(const RenderComponent &other) = delete;
   RenderComponent(RenderComponent &&other) noexcept = default;

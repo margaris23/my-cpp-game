@@ -50,27 +50,28 @@ void Init() {
 }
 
 void RenderSystem() {
-  const auto &textComponents = texts.dense;
-  const auto &renderComponents = renders.dense;
-
-  // FIXME: perf - loop through texts, renders seperately
-  for (const auto &pos : positions.dense) {
-    // TEXTS
-    const auto text = texts.Get(pos.m_entity);
-    if (text) {
-      DrawText(text->m_value.c_str(), pos.m_value.x, pos.m_value.y, 20, BLACK);
-    }
-    // SHAPES
-    const auto render = renders.Get(pos.m_entity);
-    if (render && render->IsVisible()) {
-      if (Shape::RECTANGLE == render->m_shape) {
-        DrawRectangleLines(pos.m_value.x, pos.m_value.y, render->m_dimensions.x,
-                           render->m_dimensions.y, BLACK);
-      } else if (Shape::CIRCLE == render->m_shape) {
-        DrawCircle(pos.m_value.x, pos.m_value.y, render->m_dimensions.x, BLACK);
+  // SHAPES
+  for (auto &render : renders.dense) {
+    const auto pos = positions.Get(render.m_entity);
+    if (render.IsVisible()) {
+      if (Shape::RECTANGLE == render.m_shape) {
+        DrawRectangleLines(pos->m_value.x, pos->m_value.y, render.m_dimensions.x,
+                           render.m_dimensions.y, render.m_color);
+        DrawRectangle(pos->m_value.x + 1.f, pos->m_value.y + 1.f,
+                      render.m_dimensions.x - 2.f, render.m_dimensions.y - 2.f, RAYWHITE);
+      } else if (Shape::CIRCLE == render.m_shape) {
+        DrawCircleLines(pos->m_value.x, pos->m_value.y, render.m_dimensions.x,
+                        render.m_color);
+        DrawCircle(pos->m_value.x, pos->m_value.y, 10.f, render.m_color);
       }
       // TODO: add more...
     }
+  }
+
+  // TEXTS
+  for (const auto &text : texts.dense) {
+    const auto pos = positions.Get(text.m_entity);
+    DrawText(text.m_value.c_str(), pos->m_value.x, pos->m_value.y, 20, BLACK);
   }
 }
 
@@ -96,7 +97,9 @@ void PositionSystem() {
       pos.m_value.y += velocity->m_value.y;
     } else if (weapon) {
       const auto shooterPos = positions.Get(weapon->m_shooter);
-      pos.m_value = shooterPos->m_value;
+      // custom offsets for now
+      pos.m_value.x = shooterPos->m_value.x + 15.f;
+      pos.m_value.y = shooterPos->m_value.y + 20.f;
     }
 
     // ideally, size should be included

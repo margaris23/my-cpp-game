@@ -65,17 +65,18 @@ static void UpdateDrawFrame(void) {
   DrawCurrentScene();
 
   // DEBUG PRINT ECS STATE
-  int posX = 10, posY = GetScreenHeight() - 20, i = 0;
-  DrawText("EID:", posX, posY, 20, RED);
-  for (const auto &entity : ECS::entities) {
-    DrawText(TextFormat("%i", entity), posX + 50 + i++ * 30, posY, 20, RED);
-  }
-
-  i = 0;
-  DrawText("POS:", posX, posY - 20, 20, RED);
-  for (const auto &pos : ECS::positions.dense) {
-    DrawText(TextFormat("%i", pos.m_entity), posX + 50 + i++ * 30, posY - 20, 20, RED);
-  }
+  // int posX = 10, posY = GetScreenHeight() - 20, i = 0;
+  // DrawText("EID:", posX, posY, 20, RED);
+  // for (const auto &entity : ECS::entities) {
+  //   DrawText(TextFormat("%i", entity), posX + 50 + i++ * 30, posY, 20, RED);
+  // }
+  //
+  // i = 0;
+  // DrawText("POS:", posX, posY - 20, 20, RED);
+  // for (const auto &pos : ECS::positions.dense) {
+  //   DrawText(TextFormat("%i", pos.m_entity), posX + 50 + i++ * 30, posY - 20, 20, RED);
+  // }
+  DrawFPS(GetScreenWidth() - 80, GetScreenHeight() - 30);
 
   EndDrawing();
 }
