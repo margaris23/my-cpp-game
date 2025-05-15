@@ -107,13 +107,18 @@ void LoadGame() {
 }
 
 void UpdateGame(float delta) {
-  if (IsKeyDown(KEY_ESCAPE)) {
+  if (IsKeyPressed(KEY_ESCAPE)) {
     s_Event = SceneEvent::EXIT;
+    // s_state = GameState::PAUSE == s_state ? GameState::PLAY : GameState::PAUSE;
     return;
   }
 
   if (GameState::PLAY != s_state) {
     // TODO: implement menu/overlay handling
+
+    // 1. continue
+    // 2. settings
+    // 3. exit
     return;
   }
 
@@ -234,7 +239,6 @@ void UpdateGame(float delta) {
 }
 
 void DrawGame() {
-
   ECS::UISystem();
 
   // TEST PLANETS
