@@ -57,8 +57,12 @@ void RenderSystem() {
       if (Shape::RECTANGLE == render.m_shape) {
         DrawRectangleLines(pos->m_value.x, pos->m_value.y, render.m_dimensions.x,
                            render.m_dimensions.y, render.m_color);
-        DrawRectangle(pos->m_value.x + 1.f, pos->m_value.y + 1.f,
-                      render.m_dimensions.x - 2.f, render.m_dimensions.y - 2.f, RAYWHITE);
+        // DrawRectangle(pos->m_value.x + 1.f, pos->m_value.y + 1.f,
+        //               render.m_dimensions.x - 2.f, render.m_dimensions.y - 2.f,
+        //               RAYWHITE);
+      } else if (Shape::ELLIPSE == render.m_shape) {
+        DrawEllipseLines(pos->m_value.x, pos->m_value.y, render.m_dimensions.x,
+                         render.m_dimensions.y, render.m_color);
       } else if (Shape::CIRCLE == render.m_shape) {
         DrawCircleLines(pos->m_value.x, pos->m_value.y, render.m_dimensions.x,
                         render.m_color);
@@ -97,9 +101,9 @@ void PositionSystem() {
       pos.m_value.y += velocity->m_value.y;
     } else if (weapon) {
       const auto shooterPos = positions.Get(weapon->m_shooter);
-      // custom offsets for now
-      pos.m_value.x = shooterPos->m_value.x + 15.f;
-      pos.m_value.y = shooterPos->m_value.y + 20.f;
+      // weapon position: custom offsets for now
+      pos.m_value.x = shooterPos->m_value.x - 5.f;
+      pos.m_value.y = shooterPos->m_value.y + 8.f;
     }
 
     // ideally, size should be included
@@ -144,7 +148,7 @@ void CollisionDetectionSystem() {
       auto posB = positions.Get(colliderComps[indexB].m_entity);
 
       // Optimizations:
-      // Rectangle is expected to be our Spaceship or its MiningBeam (weapon),
+      // ELLIPSE is expected to be our Spaceship or its MiningBeam (weapon),
       // Circles are expected to be our Meteors
       // Circles do not expect to collide each other so,
       // Rectangle is expected to collide with only 1 Circle

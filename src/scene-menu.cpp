@@ -32,8 +32,8 @@ void LoadMenu() {
   ECS::Add<ECS::PositionComponent>(s_SelectedBtn, H_CenterText("New Game") - padding,
                                    100.f - padding);
   // Rectangle { width, height }
-  ECS::Add<ECS::RenderComponent>(s_SelectedBtn, BLACK, textWidth + 2.f * padding,
-                                 20.f + 2 * padding);
+  ECS::Add<ECS::RenderComponent>(s_SelectedBtn, ECS::Shape::RECTANGLE, BLACK,
+                                 textWidth + 2.f * padding, 20.f + 2 * padding);
 
   s_NewGameBtn = ECS::CreateEntity();
   ECS::Add<ECS::PositionComponent>(s_NewGameBtn, H_CenterText("New Game"), 100.f);

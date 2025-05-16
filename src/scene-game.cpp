@@ -15,7 +15,7 @@ constexpr static int MAX_METEOR_SIZE = 50;
 constexpr static float METEORS_WINDOW_PADDING = 50.f;
 constexpr static float METEOR_DMG = 0.1f;
 
-constexpr static Vector2 SPACESHIP_SIZE{40.f, 20.f}; // TODO: change dimensions
+constexpr static Vector2 SPACESHIP_SIZE{20.f, 10.f}; // TODO: change dimensions
 constexpr static float SPACESHIP_INITIAL_HEALTH = 10.f;
 constexpr static float SPACESHIP_INITIAL_LIVES = 3.f;
 constexpr static float WEAPON_SIZE = 10.f;
@@ -64,7 +64,7 @@ void LoadGame() {
     // TODO: bigger asteroids should move slower
     ECS::Add<ECS::VelocityComponent>(meteor, rnd_velocity(gen), rnd_velocity(gen));
     float radius = rnd_size(gen);
-    ECS::Add<ECS::RenderComponent>(meteor, BLACK, radius);
+    ECS::Add<ECS::RenderComponent>(meteor, ECS::Shape::CIRCLE, BLACK, radius);
     ECS::Add<ECS::ColliderComponent>(meteor, radius);
     ECS::Add<ECS::HealthComponent>(meteor, radius); // bigger means more health
     ECS::Add<ECS::DmgComponent>(meteor, METEOR_DMG);
@@ -73,7 +73,7 @@ void LoadGame() {
   // Our Hero
   s_spaceShip = ECS::CreateEntity();
   ECS::Add<ECS::PositionComponent>(s_spaceShip, screen_cw, screen_ch);
-  ECS::Add<ECS::RenderComponent>(s_spaceShip, BLACK, SPACESHIP_SIZE.x, SPACESHIP_SIZE.y);
+  ECS::Add<ECS::RenderComponent>(s_spaceShip, ECS::Shape::ELLIPSE, BLACK, SPACESHIP_SIZE.x, SPACESHIP_SIZE.y);
   ECS::Add<ECS::ColliderComponent>(s_spaceShip, SPACESHIP_SIZE.x, SPACESHIP_SIZE.y);
   ECS::Add<ECS::DmgComponent>(s_spaceShip, 0.1f);
   ECS::Add<ECS::HealthComponent>(s_spaceShip, SPACESHIP_INITIAL_HEALTH); // for collisions
@@ -150,7 +150,7 @@ void UpdateGame(float delta) {
       s_isFiring = true;
       s_firingDuration = 0;
       ECS::Add<ECS::ColliderComponent>(s_miningBeam, WEAPON_SIZE, 10.f);
-      ECS::Add<ECS::RenderComponent>(s_miningBeam, BROWN, WEAPON_SIZE, 10.f);
+      ECS::Add<ECS::RenderComponent>(s_miningBeam, ECS::Shape::RECTANGLE, BROWN, WEAPON_SIZE, 10.f);
     } else if (s_firingDuration < 24.f) {
       ++s_firingDuration;
       // Ease(now, start, max_change, duration)
@@ -250,6 +250,8 @@ void DrawGame() {
   // DrawLineStrip(shipPoints.data(), shipPoints.size(), BLACK);
 
   ECS::RenderSystem();
+
+  // DrawEllipseLines(100.f, 100.f, 20.f, 10.f, BLACK);
 
   // DrawText(TextFormat("%f", s_firingDuration), 0.f, GetScreenHeight() - 30.f, 20, RED);
 
