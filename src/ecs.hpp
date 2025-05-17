@@ -35,6 +35,7 @@ enum class UIElement {
   TEXT,
   BAR,
 };
+enum class LAYER : uint8_t { SUB, GROUND, SKY };
 
 // static ComponentGroups groups; // Mask -> SparseSet<Components>
 
@@ -114,10 +115,13 @@ struct RenderComponent {
   Vector2 m_dimensions; // width/height or radius based on shape
   Entity m_entity;
   Shape m_shape;
-  explicit RenderComponent(Shape shape, Color color, float width, float height)
-      : m_color(color), m_dimensions({width, height}), m_shape(shape) {}
-  explicit RenderComponent(Shape shape, Color color, float radius)
-      : m_color(color), m_dimensions({radius, radius}), m_shape(shape) {}
+  LAYER m_priority; // for layering
+  RenderComponent(LAYER priority, Shape shape, Color color, float width, float height)
+      : m_priority(priority), m_color(color), m_dimensions({width, height}),
+        m_shape(shape) {}
+  RenderComponent(LAYER priority, Shape shape, Color color, float radius)
+      : m_priority(priority), m_color(color), m_dimensions({radius, radius}),
+        m_shape(shape) {}
   ~RenderComponent() = default;
   RenderComponent(const RenderComponent &other) = delete;
   RenderComponent(RenderComponent &&other) noexcept = default;

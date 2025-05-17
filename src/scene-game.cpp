@@ -6,6 +6,7 @@
 #include "scenes.hpp"
 #include <algorithm>
 #include <random>
+#include <unordered_map>
 #include <vector>
 
 constexpr static int MIN_METEORS = 3;
@@ -14,6 +15,8 @@ constexpr static int MIN_METEOR_SIZE = 20;
 constexpr static int MAX_METEOR_SIZE = 50;
 constexpr static float METEORS_WINDOW_PADDING = 50.f;
 constexpr static float METEOR_DMG = 0.1f;
+constexpr static float METEOR_CORE_SIZE = 10.f;
+constexpr static float METEOR_CORE_HEALTH = 0.1f;
 
 constexpr static Vector2 SPACESHIP_SIZE{20.f, 10.f}; // TODO: change dimensions
 constexpr static float SPACESHIP_INITIAL_HEALTH = 10.f;
@@ -38,33 +41,64 @@ static GameState s_state = GameState::PLAY;
 static ECS::Entity s_spaceshipHealth;
 static ECS::Entity s_spaceshipLives;
 static ECS::Entity s_spaceShip;
-static std::vector<ECS::Entity> meteors;
 static ECS::Entity s_miningBeam;
 static ECS::Entity s_score;
+static std::vector<ECS::Entity> s_meteors;
+
+// meteor -> core index
+// !@#$% BUG: Strange Rehashing!!! WTF!!!
+// item reappears, possible iterator invalidating
+// static std::unordered_map<ECS::Entity, size_t> s_cores_map{};
+static std::vector<ECS::Entity> s_cores;
+// static std::vector<bool> s_core_active;
+
+static size_t s_frame = 0;
 
 void LoadGame() {
   float screen_cw = GetScreenWidth() / 2.f;
   float screen_ch = GetScreenHeight() / 2.f;
-  float meteors_offset = MAX_METEOR_SIZE + METEORS_WINDOW_PADDING;
+  float s_meteors_offset = MAX_METEOR_SIZE + METEORS_WINDOW_PADDING;
 
   // Randomizers
-  std::uniform_int_distribution<int> num_of_meteors(MIN_METEORS, MAX_METEORS);
-  std::uniform_real_distribution<float> rnd_x(meteors_offset,
-                                              GetScreenWidth() - meteors_offset);
-  std::uniform_real_distribution<float> rnd_y(meteors_offset,
-                                              GetScreenHeight() - meteors_offset);
+  std::uniform_int_distribution<int> num_of_s_meteors(MIN_METEORS, MAX_METEORS);
+  std::uniform_real_distribution<float> rnd_x(s_meteors_offset,
+                                              GetScreenWidth() - s_meteors_offset);
+  std::uniform_real_distribution<float> rnd_y(s_meteors_offset,
+                                              GetScreenHeight() - s_meteors_offset);
   std::uniform_real_distribution<float> rnd_size(MIN_METEOR_SIZE, MAX_METEOR_SIZE);
   std::uniform_real_distribution<float> rnd_velocity(-1.f, 1.f);
 
   // Generate Meteors
-  for (int i = 0; i < num_of_meteors(gen); i++) {
-    meteors.push_back(ECS::CreateEntity());
-    ECS::Entity meteor = meteors.back();
-    ECS::Add<ECS::PositionComponent>(meteor, rnd_x(gen), rnd_y(gen));
-    // TODO: bigger asteroids should move slower
-    ECS::Add<ECS::VelocityComponent>(meteor, rnd_velocity(gen), rnd_velocity(gen));
+  s_meteors.reserve(num_of_s_meteors(gen));
+  s_cores.reserve(s_meteors.capacity());
+  // init cores as inactive
+  // s_core_active.resize(s_meteors.capacity(), false);
+
+  for (int i = 0; i < s_meteors.capacity(); i++) {
+    float posX = rnd_x(gen);
+    float posY = rnd_y(gen);
+    float velX = rnd_velocity(gen);
+    float velY = rnd_velocity(gen);
     float radius = rnd_size(gen);
-    ECS::Add<ECS::RenderComponent>(meteor, ECS::Shape::CIRCLE, BLACK, radius);
+
+    // Meteor Core
+    s_cores.push_back(ECS::CreateEntity());
+    ECS::Entity core = s_cores.back();
+    ECS::Add<ECS::PositionComponent>(core, posX, posY);
+    ECS::Add<ECS::VelocityComponent>(core, velX, velY);
+    ECS::Add<ECS::RenderComponent>(core, ECS::LAYER::SUB, ECS::Shape::CIRCLE, DARKGRAY,
+                                   METEOR_CORE_SIZE);
+    ECS::Add<ECS::HealthComponent>(core, METEOR_CORE_HEALTH);
+    // NO Collider until core revealed
+
+    // Main Meteor
+    s_meteors.push_back(ECS::CreateEntity());
+    ECS::Entity meteor = s_meteors.back();
+    ECS::Add<ECS::PositionComponent>(meteor, posX, posY);
+    // TODO: bigger asteroids should move slower
+    ECS::Add<ECS::VelocityComponent>(meteor, velX, velY);
+    ECS::Add<ECS::RenderComponent>(meteor, ECS::LAYER::GROUND, ECS::Shape::CIRCLE, BLACK,
+                                   radius);
     ECS::Add<ECS::ColliderComponent>(meteor, radius);
     ECS::Add<ECS::HealthComponent>(meteor, radius); // bigger means more health
     ECS::Add<ECS::DmgComponent>(meteor, METEOR_DMG);
@@ -73,7 +107,8 @@ void LoadGame() {
   // Our Hero
   s_spaceShip = ECS::CreateEntity();
   ECS::Add<ECS::PositionComponent>(s_spaceShip, screen_cw, screen_ch);
-  ECS::Add<ECS::RenderComponent>(s_spaceShip, ECS::Shape::ELLIPSE, BLACK, SPACESHIP_SIZE.x, SPACESHIP_SIZE.y);
+  ECS::Add<ECS::RenderComponent>(s_spaceShip, ECS::LAYER::GROUND, ECS::Shape::ELLIPSE,
+                                 BLACK, SPACESHIP_SIZE.x, SPACESHIP_SIZE.y);
   ECS::Add<ECS::ColliderComponent>(s_spaceShip, SPACESHIP_SIZE.x, SPACESHIP_SIZE.y);
   ECS::Add<ECS::DmgComponent>(s_spaceShip, 0.1f);
   ECS::Add<ECS::HealthComponent>(s_spaceShip, SPACESHIP_INITIAL_HEALTH); // for collisions
@@ -107,6 +142,8 @@ void LoadGame() {
 }
 
 void UpdateGame(float delta) {
+  ++s_frame;
+
   if (IsKeyPressed(KEY_ESCAPE)) {
     s_Event = SceneEvent::EXIT;
     // s_state = GameState::PAUSE == s_state ? GameState::PLAY : GameState::PAUSE;
@@ -145,21 +182,24 @@ void UpdateGame(float delta) {
   force->m_value.y *= 5.f;
 
   if (IsKeyDown(KEY_SPACE)) {
-    const auto &weapon = ECS::Get<ECS::WeaponComponent>(s_miningBeam);
+    const auto weapon = ECS::Get<ECS::WeaponComponent>(s_miningBeam);
     if (!s_isFiring) {
       s_isFiring = true;
       s_firingDuration = 0;
       ECS::Add<ECS::ColliderComponent>(s_miningBeam, WEAPON_SIZE, 10.f);
-      ECS::Add<ECS::RenderComponent>(s_miningBeam, ECS::Shape::RECTANGLE, BROWN, WEAPON_SIZE, 10.f);
+      ECS::Add<ECS::RenderComponent>(s_miningBeam, ECS::LAYER::GROUND,
+                                     ECS::Shape::RECTANGLE, BROWN, WEAPON_SIZE, 10.f);
     } else if (s_firingDuration < 24.f) {
       ++s_firingDuration;
       // Ease(now, start, max_change, duration)
       float tween =
-          EaseLinearIn(s_firingDuration, 10.f, weapon->m_max_length - 10.f, 24.f);
+          EaseLinearIn(s_firingDuration, 10.f, WEAPON_MAX_DISTANCE - 10.f, 24.f);
       auto beam_collider = ECS::Get<ECS::ColliderComponent>(s_miningBeam);
+      if (beam_collider)
+        beam_collider->m_dimensions.y = tween;
       auto beam_render = ECS::Get<ECS::RenderComponent>(s_miningBeam);
-      beam_collider->m_dimensions.y = tween;
-      beam_render->m_dimensions.y = tween;
+      if (beam_render)
+        beam_render->m_dimensions.y = tween;
     }
   } else if (s_isFiring) {
     s_isFiring = false;
@@ -178,11 +218,17 @@ void UpdateGame(float delta) {
   ECS::PositionSystem();
   ECS::CollisionDetectionSystem();
 
-  // Sync meteor health, decide on score (Score System ???)
+  // SCORE SYSTEM
   auto score = ECS::Get<ECS::GameStateComponent>(s_score);
-  for (const auto &meteor : meteors) {
+  for (const auto &core : s_cores) {
+    const auto &collider = ECS::Get<ECS::ColliderComponent>(core);
+    if (collider && collider->m_collided_with.has_value()) {
+      score->m_value += 100; // TODO: add core points/fuel instead
+    }
+  }
+  for (const auto &meteor : s_meteors) {
     const auto &collider = ECS::Get<ECS::ColliderComponent>(meteor);
-    if (collider->m_collided_with.has_value()) {
+    if (collider && collider->m_collided_with.has_value()) {
       // Let's earn 1 point for every hit for now....
       ++score->m_value;
     }
@@ -192,25 +238,70 @@ void UpdateGame(float delta) {
 
   ECS::CollisionResolutionSystem();
 
+  // Kill s_cores with zero health
+  for (auto core_it = s_cores.begin(); core_it != s_cores.end();) {
+    const auto core_health = ECS::Get<ECS::HealthComponent>(*core_it);
+    if (core_health && core_health->m_value == 0) {
+      auto core_to_delete = *core_it;
+      core_it = s_cores.erase(core_it);
+      ECS::DeleteEntity(core_to_delete);
+      // fmt::println("Core {} DELETED", core_to_delete);
+    } else {
+      ++core_it;
+    }
+  }
+
   // Meteors Updates
-  for (std::vector<ECS::Entity>::iterator it = meteors.begin(); it != meteors.end();) {
-    // Kill meteors with zero health
+  for (auto it = s_meteors.begin(); it != s_meteors.end();) {
+    // Kill s_meteors with zero health
     const auto meteor_health = ECS::Get<ECS::HealthComponent>(*it);
     if (meteor_health->m_value == 0) {
       ECS::DeleteEntity(*it);
-      it = meteors.erase(it);
+      it = s_meteors.erase(it);
       continue;
     }
 
     // Update size based on health
     auto render = ECS::Get<ECS::RenderComponent>(*it);
-    if (meteor_health->m_value > 10.f) {
-      render->m_dimensions.x = meteor_health->m_value;
-    } else {
+
+    if (meteor_health->m_value < 10.f) {
       render->m_dimensions.x = 10.f;
+
+      // prepare meteors, to deattach cores
+      // if (s_cores_map.count(*it) > 0) {
+      //   cores_to_erase.push_back(*it);
+      // }
+
+    } else {
+      render->m_dimensions.x = meteor_health->m_value;
     }
 
     ++it;
+  }
+
+  // if Meteor is almost mined -> Enable its core
+  for (const auto &meteor : s_meteors) {
+    const auto meteor_health = ECS::Get<ECS::HealthComponent>(meteor);
+    if (meteor_health->m_value < 10.f) {
+      // every core is considered to be before to a meteor
+      const ECS::Entity core = meteor - 1;
+      auto collider = ECS::Get<ECS::ColliderComponent>(core);
+      if (collider == nullptr) {
+        fmt::println("Activating {} for {}", core, meteor);
+        // activate core
+        auto core_velocity = ECS::Get<ECS::VelocityComponent>(core);
+        if (core_velocity) {
+          core_velocity->m_value.x *= -1;
+          core_velocity->m_value.y *= -1;
+        }
+        auto core_pos = ECS::Get<ECS::PositionComponent>(core);
+        if (core_pos) {
+          core_pos->m_value.x += 10.f;
+          core_pos->m_value.y += 10.f;
+        }
+        ECS::Add<ECS::ColliderComponent>(core, METEOR_CORE_SIZE);
+      }
+    }
   }
 
   // UISystem-UPDATE ????
@@ -260,13 +351,27 @@ void DrawGame() {
   // BLACK); DrawRectangle(15.f, 15.f, GetScreenWidth() - 30.f, GetScreenHeight() - 30.f,
   // RED);
 
-  // Render Meteors Healths for DEBUG
-  // for (const auto &meteor : meteors) {
+  // Render Meteors info for DEBUG
+  // for (const auto &meteor : s_meteors) {
   //   const auto &health = ECS::Get<ECS::HealthComponent>(meteor);
   //   const auto &pos = ECS::Get<ECS::PositionComponent>(meteor);
   //   const auto &render = ECS::Get<ECS::RenderComponent>(meteor);
-  //   DrawRectangle(pos->m_value.x + render->m_dimensions.x,
-  //                 pos->m_value.y + render->m_dimensions.x, health->m_value, 10, BLACK);
+  //   DrawText(TextFormat("%i", meteor), pos->m_value.x,
+  //            pos->m_value.y + render->m_dimensions.x, 20, GREEN);
+  //   // DrawRectangle(pos->m_value.x + render->m_dimensions.x,
+  //   //               pos->m_value.y + render->m_dimensions.x, health->m_value, 10,
+  //   BLACK);
+  // }
+
+  // Render Cores info for DEBUG
+  // for (const auto &core : s_cores) {
+  //   const auto &pos = ECS::Get<ECS::PositionComponent>(core);
+  //   const auto &render = ECS::Get<ECS::RenderComponent>(core);
+  //   DrawText(TextFormat("%i", core), pos->m_value.x,
+  //            pos->m_value.y + render->m_dimensions.x, 20, RED);
+  //   // DrawRectangle(pos->m_value.x + render->m_dimensions.x,
+  //   //               pos->m_value.y + render->m_dimensions.x, health->m_value, 10,
+  //   BLACK);
   // }
 
   // DEBUG
@@ -292,8 +397,10 @@ void UnloadGame() {
   ECS::DeleteEntity(s_spaceshipLives);
   ECS::DeleteEntity(s_score);
   ECS::DeleteEntity(s_miningBeam);
-  std::for_each(meteors.begin(), meteors.end(),
+  std::for_each(s_meteors.begin(), s_meteors.end(),
                 [](auto meteor) { ECS::DeleteEntity(meteor); });
+  std::for_each(s_cores.begin(), s_cores.end(),
+                [](auto core) { ECS::DeleteEntity(core); });
 }
 
 SceneEvent OnGameEvent() { return s_Event; }

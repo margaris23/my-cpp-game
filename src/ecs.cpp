@@ -1,6 +1,7 @@
 #include "ecs.hpp"
-#include "fmt/core.h"
+// #include "fmt/core.h"
 #include "raylib.h"
+#include <algorithm>
 #include <functional>
 #include <optional>
 #include <string>
@@ -25,9 +26,9 @@ Entity CreateEntity() {
 }
 
 void DeleteEntity(Entity entity) {
-  fmt::print("\tRemoving Entity {} ... ", entity);
+  // fmt::print("\tRemoving Entity {} ... ", entity);
   entities.erase(std::remove(entities.begin(), entities.end(), entity));
-  fmt::println(" #entities left: {}", entities.size());
+  // fmt::println(" #entities left: {}", entities.size());
 
   Remove<PositionComponent>(entity);
   Remove<VelocityComponent>(entity);
@@ -49,7 +50,20 @@ void Init() {
   // s_typeToBitSetMap[std::type_index(typeid(CollisionComponent))] = 1 << 2;
 }
 
+struct {
+  bool operator()(const RenderComponent &lhs, const RenderComponent &rhs) {
+    return lhs.m_priority < rhs.m_priority;
+  }
+} compareLayer;
+
 void RenderSystem() {
+  // Sort by Layer - slow :(
+  std::sort(renders.dense.begin(), renders.dense.end(), compareLayer);
+  // Update sparse indexing
+  for (int i = 0; i < renders.dense.size(); i++) {
+    renders.sparse[renders.dense[i].m_entity] = i;
+  }
+
   // SHAPES
   for (auto &render : renders.dense) {
     const auto pos = positions.Get(render.m_entity);
@@ -64,9 +78,8 @@ void RenderSystem() {
         DrawEllipseLines(pos->m_value.x, pos->m_value.y, render.m_dimensions.x,
                          render.m_dimensions.y, render.m_color);
       } else if (Shape::CIRCLE == render.m_shape) {
-        DrawCircleLines(pos->m_value.x, pos->m_value.y, render.m_dimensions.x,
-                        render.m_color);
-        DrawCircle(pos->m_value.x, pos->m_value.y, 10.f, render.m_color);
+        DrawCircle(pos->m_value.x, pos->m_value.y, render.m_dimensions.x, render.m_color);
+        // DrawCircle(pos->m_value.x, pos->m_value.y, 10.f, render.m_color);
       }
       // TODO: add more...
     }
@@ -122,12 +135,12 @@ void PositionSystem() {
 }
 
 bool HandleCollision(ColliderComponent &colA, ColliderComponent &colB,
-                     const PositionComponent &posA, const PositionComponent &posB) {
+                     const PositionComponent *posA, const PositionComponent *posB) {
   const auto &dimA = colA.m_dimensions;
 
   bool collides =
-      CheckCollisionCircleRec(posB.m_value, colB.m_dimensions.x,
-                              {posA.m_value.x, posA.m_value.y, dimA.x, dimA.y});
+      CheckCollisionCircleRec(posB->m_value, colB.m_dimensions.x,
+                              {posA->m_value.x, posA->m_value.y, dimA.x, dimA.y});
 
   if (collides) {
     colA.m_collided_with = colB.m_entity;
@@ -147,6 +160,11 @@ void CollisionDetectionSystem() {
       auto posA = positions.Get(colliderComps[indexA].m_entity);
       auto posB = positions.Get(colliderComps[indexB].m_entity);
 
+      // TODO: Need to address this later
+      if (!posB || !posA) {
+        continue;
+      }
+
       // Optimizations:
       // ELLIPSE is expected to be our Spaceship or its MiningBeam (weapon),
       // Circles are expected to be our Meteors
@@ -154,13 +172,13 @@ void CollisionDetectionSystem() {
       // Rectangle is expected to collide with only 1 Circle
       if (Shape::RECTANGLE == colliderComps[indexA].m_shape &&
           Shape::CIRCLE == colliderComps[indexB].m_shape) {
-        if (HandleCollision(colliderComps[indexA], colliderComps[indexB], *posA, *posB)) {
-          continue;
+        if (HandleCollision(colliderComps[indexA], colliderComps[indexB], posA, posB)) {
+          break;
         }
       } else if (Shape::RECTANGLE == colliderComps[indexB].m_shape &&
                  Shape::CIRCLE == colliderComps[indexA].m_shape) {
-        if (HandleCollision(colliderComps[indexB], colliderComps[indexA], *posB, *posA)) {
-          continue;
+        if (HandleCollision(colliderComps[indexB], colliderComps[indexA], posB, posA)) {
+          break;
         }
       }
     }
@@ -204,7 +222,7 @@ void UISystem() {
         widgetPos->m_value.y = selectedWidgetPos->m_value.y;
       }
       // ECS::Add<ECS::PositionComponent>(s_SelectedBtn, H_CenterText("New Game") -
-      // padding, 100.f - padding); ECS::Add<ECS::RenderComponent>(s_SelectedBtn,
+      // padding, 100.f - padding); ECS::Add<ECS::eenderComponent>(s_SelectedBtn,
       // textWidth + 2.f * padding, 20.f + 2 * padding);  // Rectangle
     } else if (UIElement::BAR == widget.m_type) {
       const auto state = stateValues.Get(widget.m_entity);
