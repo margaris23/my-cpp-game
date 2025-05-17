@@ -1,5 +1,5 @@
 #include "ecs.hpp"
-// #include "fmt/core.h"
+#include "fmt/core.h"
 #include "raylib.h"
 #include <algorithm>
 #include <functional>
@@ -35,6 +35,7 @@ void DeleteEntity(Entity entity) {
   Remove<ColliderComponent>(entity);
   Remove<TextComponent>(entity);
   Remove<RenderComponent>(entity);
+  renders_sorted = false;
   Remove<ForceComponent>(entity);
   Remove<UIComponent>(entity);
   Remove<HealthComponent>(entity);
@@ -57,11 +58,14 @@ struct {
 } compareLayer;
 
 void RenderSystem() {
-  // Sort by Layer - slow :(
-  std::sort(renders.dense.begin(), renders.dense.end(), compareLayer);
-  // Update sparse indexing
-  for (int i = 0; i < renders.dense.size(); i++) {
-    renders.sparse[renders.dense[i].m_entity] = i;
+  if (!renders_sorted) {
+    // Sort by Layer
+    std::sort(renders.dense.begin(), renders.dense.end(), compareLayer);
+    // Update sparse indexing
+    for (int i = 0; i < renders.dense.size(); i++) {
+      renders.sparse[renders.dense[i].m_entity] = i;
+    }
+    renders_sorted = true;
   }
 
   // SHAPES

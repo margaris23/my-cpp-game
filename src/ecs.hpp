@@ -37,6 +37,8 @@ enum class UIElement {
 };
 enum class LAYER : uint8_t { SUB, GROUND, SKY };
 
+inline bool renders_sorted;
+
 // static ComponentGroups groups; // Mask -> SparseSet<Components>
 
 struct PositionComponent {
@@ -108,7 +110,6 @@ struct UIComponent {
   UIComponent &operator=(UIComponent &&rhs) noexcept = default;
 };
 
-// Looks the same as Collider, however it will possibly be enhanced
 // RenderComponent is for primitive drawables
 struct RenderComponent {
   Color m_color;
@@ -214,6 +215,7 @@ template <typename T, typename... Args> bool Add(Entity entity, Args &&...args) 
   } else if constexpr (std::is_same_v<T, TextComponent>) {
     return texts.Add(entity, std::move(component));
   } else if constexpr (std::is_same_v<T, RenderComponent>) {
+    renders_sorted = false;
     return renders.Add(entity, std::move(component));
   } else if constexpr (std::is_same_v<T, ForceComponent>) {
     return forces.Add(entity, std::move(component));
