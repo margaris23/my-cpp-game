@@ -202,13 +202,12 @@ void CollisionResolutionSystem() {
           health->m_value = 0;
         }
 
-        collider.m_collided_with.reset();
-
         // Need to add Bounce physics
         // Need to know: pos and dir ???
         // auto pos = positions.Get(collider.m_entity);
         // Add<ForceComponent>(collider.m_entity, -10.f, -10.f);
       }
+      collider.m_collided_with.reset();
     }
   }
 }

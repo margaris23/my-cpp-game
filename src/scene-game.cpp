@@ -188,6 +188,7 @@ void UpdateGame(float delta) {
   force->m_value.x *= 5.f;
   force->m_value.y *= 5.f;
 
+  // WEAPON FIRING
   if (IsKeyDown(KEY_SPACE)) {
     const auto weapon = ECS::Get<ECS::WeaponComponent>(s_miningBeam);
     if (!s_isFiring) {
@@ -196,17 +197,24 @@ void UpdateGame(float delta) {
       ECS::Add<ECS::ColliderComponent>(s_miningBeam, WEAPON_SIZE, 10.f);
       ECS::Add<ECS::RenderComponent>(s_miningBeam, ECS::LAYER::GROUND,
                                      ECS::Shape::RECTANGLE, BROWN, WEAPON_SIZE, 10.f);
-    } else if (s_firingDuration < 24.f) {
-      ++s_firingDuration;
-      // Ease(now, start, max_change, duration)
-      float tween =
-          EaseLinearIn(s_firingDuration, 10.f, WEAPON_MAX_DISTANCE - 10.f, 24.f);
+    } else {
       auto beam_collider = ECS::Get<ECS::ColliderComponent>(s_miningBeam);
-      if (beam_collider)
+
+      if (beam_collider) {
+        if (!beam_collider->m_collided_with.has_value() && s_firingDuration < 24.f) {
+          ++s_firingDuration;
+        }
+
+        // Ease(now, start, max_change, duration)
+        float tween =
+            EaseLinearIn(s_firingDuration, 10.f, WEAPON_MAX_DISTANCE - 10.f, 24.f);
         beam_collider->m_dimensions.y = tween;
-      auto beam_render = ECS::Get<ECS::RenderComponent>(s_miningBeam);
-      if (beam_render)
-        beam_render->m_dimensions.y = tween;
+
+        auto beam_render = ECS::Get<ECS::RenderComponent>(s_miningBeam);
+        if (beam_render) {
+          beam_render->m_dimensions.y = tween;
+        }
+      }
     }
   } else if (s_isFiring) {
     s_isFiring = false;
@@ -226,6 +234,7 @@ void UpdateGame(float delta) {
   ECS::CollisionDetectionSystem();
 
   // SCORE SYSTEM
+  // CORES
   auto cores_count = ECS::Get<ECS::GameStateComponent>(s_coresCount);
   for (const auto &core : s_cores) {
     const auto &collider = ECS::Get<ECS::ColliderComponent>(core);
@@ -234,9 +243,8 @@ void UpdateGame(float delta) {
     }
   }
   auto coresCount_text = ECS::Get<ECS::TextComponent>(s_coresCount);
-  // TODO: convert to icon
   coresCount_text->m_value = fmt::format("{} Cores", cores_count->m_value);
-
+  // SCORE
   auto score = ECS::Get<ECS::GameStateComponent>(s_score);
   for (const auto &meteor : s_meteors) {
     const auto &collider = ECS::Get<ECS::ColliderComponent>(meteor);
@@ -341,7 +349,13 @@ void DrawGame() {
 
   // DrawEllipseLines(100.f, 100.f, 20.f, 10.f, BLACK);
 
-  // DrawText(TextFormat("%f", s_firingDuration), 0.f, GetScreenHeight() - 30.f, 20, RED);
+  // // DEBUG MINING BEAM
+  // auto beam_collider = ECS::Get<ECS::ColliderComponent>(s_miningBeam);
+  // if (beam_collider) {
+  //   DrawText(
+  //       TextFormat("%i %f", beam_collider->m_collided_with.has_value(), s_firingDuration),
+  //       0.f, GetScreenHeight() - 30.f, 20, RED);
+  // }
 
   // OVERLAY
   // DrawRectangleLines(5.f, 5.f, GetScreenWidth() - 10.f, GetScreenHeight() - 10.f,
