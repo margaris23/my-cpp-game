@@ -79,8 +79,10 @@ struct ColliderComponent {
 // TODO: merge with UIComponent
 struct TextComponent {
   std::string m_value;
+  Color m_color;
   Entity m_entity;
-  explicit TextComponent(std::string_view text) : m_value(text) {}
+  explicit TextComponent(std::string_view text, Color color = BLACK)
+      : m_value(text), m_color(color) {}
   ~TextComponent() = default;
   TextComponent(const TextComponent &other) = delete;
   TextComponent(TextComponent &&other) noexcept = default;

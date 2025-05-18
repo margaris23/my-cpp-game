@@ -43,6 +43,7 @@ static ECS::Entity s_spaceshipLives;
 static ECS::Entity s_spaceShip;
 static ECS::Entity s_miningBeam;
 static ECS::Entity s_score;
+static ECS::Entity s_coresCount;
 static std::vector<ECS::Entity> s_meteors;
 
 // meteor -> core index
@@ -86,7 +87,7 @@ void LoadGame() {
     ECS::Entity core = s_cores.back();
     ECS::Add<ECS::PositionComponent>(core, posX, posY);
     ECS::Add<ECS::VelocityComponent>(core, velX, velY);
-    ECS::Add<ECS::RenderComponent>(core, ECS::LAYER::SUB, ECS::Shape::CIRCLE, DARKGRAY,
+    ECS::Add<ECS::RenderComponent>(core, ECS::LAYER::SUB, ECS::Shape::CIRCLE, DARKGREEN,
                                    METEOR_CORE_SIZE);
     ECS::Add<ECS::HealthComponent>(core, METEOR_CORE_HEALTH);
     // NO Collider until core revealed
@@ -122,14 +123,20 @@ void LoadGame() {
 
   s_spaceshipLives = ECS::CreateEntity();
   ECS::Add<ECS::GameStateComponent>(s_spaceshipLives, SPACESHIP_INITIAL_LIVES);
-  ECS::Add<ECS::TextComponent>(s_spaceshipLives, "3 Lives");
+  ECS::Add<ECS::TextComponent>(s_spaceshipLives, "3 Lives", MAROON);
   ECS::Add<ECS::PositionComponent>(
       s_spaceshipLives, GetScreenWidth() - MeasureText(" Lives", 20) - 20.f, 10.f);
 
+  // Scores
   s_score = ECS::CreateEntity();
   ECS::Add<ECS::GameStateComponent>(s_score, 0.f);
-  ECS::Add<ECS::TextComponent>(s_score, "0");
+  ECS::Add<ECS::TextComponent>(s_score, "0", BROWN);
   ECS::Add<ECS::PositionComponent>(s_score, screen_cw - 10.f, 10.f);
+
+  s_coresCount = ECS::CreateEntity();
+  ECS::Add<ECS::GameStateComponent>(s_coresCount, 0.f);
+  ECS::Add<ECS::TextComponent>(s_coresCount, "0 Cores", DARKGREEN);
+  ECS::Add<ECS::PositionComponent>(s_coresCount, screen_cw * 1.5f, 10.f);
 
   // Spaceship's Mining Beam
   // TODO: create before spaceship (order matters when rendering)
@@ -219,13 +226,18 @@ void UpdateGame(float delta) {
   ECS::CollisionDetectionSystem();
 
   // SCORE SYSTEM
-  auto score = ECS::Get<ECS::GameStateComponent>(s_score);
+  auto cores_count = ECS::Get<ECS::GameStateComponent>(s_coresCount);
   for (const auto &core : s_cores) {
     const auto &collider = ECS::Get<ECS::ColliderComponent>(core);
     if (collider && collider->m_collided_with.has_value()) {
-      score->m_value += 100; // TODO: add core points/fuel instead
+      ++cores_count->m_value;
     }
   }
+  auto coresCount_text = ECS::Get<ECS::TextComponent>(s_coresCount);
+  // TODO: convert to icon
+  coresCount_text->m_value = fmt::format("{} Cores", cores_count->m_value);
+
+  auto score = ECS::Get<ECS::GameStateComponent>(s_score);
   for (const auto &meteor : s_meteors) {
     const auto &collider = ECS::Get<ECS::ColliderComponent>(meteor);
     if (collider && collider->m_collided_with.has_value()) {
@@ -242,10 +254,8 @@ void UpdateGame(float delta) {
   for (auto core_it = s_cores.begin(); core_it != s_cores.end();) {
     const auto core_health = ECS::Get<ECS::HealthComponent>(*core_it);
     if (core_health && core_health->m_value == 0) {
-      auto core_to_delete = *core_it;
+      ECS::DeleteEntity(*core_it);
       core_it = s_cores.erase(core_it);
-      ECS::DeleteEntity(core_to_delete);
-      // fmt::println("Core {} DELETED", core_to_delete);
     } else {
       ++core_it;
     }
@@ -255,44 +265,24 @@ void UpdateGame(float delta) {
   for (auto it = s_meteors.begin(); it != s_meteors.end();) {
     // Kill s_meteors with zero health
     const auto meteor_health = ECS::Get<ECS::HealthComponent>(*it);
-    if (meteor_health->m_value == 0) {
-      ECS::DeleteEntity(*it);
-      it = s_meteors.erase(it);
-      continue;
-    }
-
-    // Update size based on health
-    auto render = ECS::Get<ECS::RenderComponent>(*it);
-
-    if (meteor_health->m_value < 10.f) {
-      render->m_dimensions.x = 10.f;
-
-      // prepare meteors, to deattach cores
-      // if (s_cores_map.count(*it) > 0) {
-      //   cores_to_erase.push_back(*it);
-      // }
-
-    } else {
-      render->m_dimensions.x = meteor_health->m_value;
-    }
-
-    ++it;
-  }
-
-  // if Meteor is almost mined -> Enable its core
-  for (const auto &meteor : s_meteors) {
-    const auto meteor_health = ECS::Get<ECS::HealthComponent>(meteor);
     if (meteor_health->m_value < 10.f) {
       // every core is considered to be before to a meteor
-      const ECS::Entity core = meteor - 1;
+      const ECS::Entity core = *it - 1;
+
+      ECS::DeleteEntity(*it);
+      it = s_meteors.erase(it);
+
+      // Enable core
       auto collider = ECS::Get<ECS::ColliderComponent>(core);
       if (collider == nullptr) {
-        fmt::println("Activating {} for {}", core, meteor);
+        // fmt::println("Activating {} for {}", core, meteor);
         // activate core
         auto core_velocity = ECS::Get<ECS::VelocityComponent>(core);
         if (core_velocity) {
           core_velocity->m_value.x *= -1;
-          core_velocity->m_value.y *= -1;
+          if (core_velocity->m_value.y < 0) {
+            core_velocity->m_value.y *= -1;
+          }
         }
         auto core_pos = ECS::Get<ECS::PositionComponent>(core);
         if (core_pos) {
@@ -301,7 +291,14 @@ void UpdateGame(float delta) {
         }
         ECS::Add<ECS::ColliderComponent>(core, METEOR_CORE_SIZE);
       }
+      continue;
     }
+
+    // Update size based on health
+    auto render = ECS::Get<ECS::RenderComponent>(*it);
+    render->m_dimensions.x = meteor_health->m_value;
+
+    ++it;
   }
 
   // UISystem-UPDATE ????
@@ -396,6 +393,7 @@ void UnloadGame() {
   ECS::DeleteEntity(s_spaceshipHealth);
   ECS::DeleteEntity(s_spaceshipLives);
   ECS::DeleteEntity(s_score);
+  ECS::DeleteEntity(s_coresCount);
   ECS::DeleteEntity(s_miningBeam);
   std::for_each(s_meteors.begin(), s_meteors.end(),
                 [](auto meteor) { ECS::DeleteEntity(meteor); });

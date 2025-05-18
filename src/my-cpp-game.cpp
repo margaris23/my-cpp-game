@@ -76,7 +76,7 @@ static void UpdateDrawFrame(void) {
   // for (const auto &pos : ECS::positions.dense) {
   //   DrawText(TextFormat("%i", pos.m_entity), posX + 50 + i++ * 30, posY - 20, 20, RED);
   // }
-  DrawFPS(GetScreenWidth() - 80, GetScreenHeight() - 30);
+  // DrawFPS(GetScreenWidth() - 80, GetScreenHeight() - 30);
 
   EndDrawing();
 }

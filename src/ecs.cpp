@@ -92,7 +92,7 @@ void RenderSystem() {
   // TEXTS
   for (const auto &text : texts.dense) {
     const auto pos = positions.Get(text.m_entity);
-    DrawText(text.m_value.c_str(), pos->m_value.x, pos->m_value.y, 20, BLACK);
+    DrawText(text.m_value.c_str(), pos->m_value.x, pos->m_value.y, 20, text.m_color);
   }
 }
 
