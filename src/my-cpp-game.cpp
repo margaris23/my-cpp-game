@@ -1,3 +1,4 @@
+#include "fmt/core.h"
 #include "raylib.h"
 #include "scenes.hpp"
 #include <iostream>
@@ -84,9 +85,6 @@ static void UnloadCurrentScene() {
   case Scene::INTRO:
     UnloadIntro();
     break;
-  case Scene::MENU:
-    UnloadMenu();
-    break;
   case Scene::GAME:
     UnloadGame();
     break;
@@ -106,9 +104,6 @@ static void LoadScene(Scene scene) {
     case Scene::INTRO:
       LoadIntro();
       break;
-    case Scene::MENU:
-      LoadMenu();
-      break;
     case Scene::GAME:
       LoadGame();
       break;
@@ -126,17 +121,15 @@ static void UpdateCurrentScene(float delta) {
   case Scene::INTRO:
     UpdateIntro(delta);
     break;
-  case Scene::MENU:
-    UpdateMenu(delta);
-    break;
   case Scene::GAME:
     UpdateGame(delta);
-    if (s_OverlayMenu) {
-      UpdateMenu(delta);
-    }
     break;
   default:
     break;
+  }
+
+  if (s_OverlayMenu) {
+    UpdateMenu(delta);
   }
 }
 
@@ -145,47 +138,56 @@ static void DrawCurrentScene() {
   case Scene::INTRO:
     DrawIntro();
     break;
-  case Scene::MENU:
-    DrawMenu();
-    break;
   case Scene::GAME:
     DrawGame();
-    if (s_OverlayMenu) {
-      DrawMenu();
-    }
     break;
   default:
     break;
   }
+
+  if (s_OverlayMenu) {
+    DrawMenu();
+  }
 }
 
 static void HandleSceneEvent() {
+  // Handle Overlay in focus
   if (s_OverlayMenu) {
     SceneEvent event = OnMenuEvent();
     if (event == SceneEvent::EXIT) {
       UnloadMenu();
       s_OverlayMenu = false;
-
+      UnloadCurrentScene();
+      s_AppShouldExit = true;
+    } else if (event == SceneEvent::CONTINUE) {
+      UnloadMenu();
+      s_OverlayMenu = false;
       if (Scene::GAME == g_currentScene) {
         SetGameFocus(true);
+      } else if (Scene::INTRO == g_currentScene) {
+        SetIntroFocus();
       }
+    } else if (event == SceneEvent::NEW_GAME) {
+      UnloadMenu();
+      s_OverlayMenu = false;
+      UnloadCurrentScene();
+      LoadScene(Scene::GAME);
     }
     return;
   }
 
+  // Rest of Scenes
   switch (g_currentScene) {
   case Scene::INTRO: {
     SceneEvent event = OnIntroEvent();
-    if (event == SceneEvent::NEXT) {
-      LoadScene(Scene::MENU);
-    }
-  } break;
-  case Scene::MENU: {
-    SceneEvent event = OnMenuEvent();
-    if (event == SceneEvent::NEXT) {
-      LoadScene(Scene::GAME);
-    } else if (event == SceneEvent::EXIT) {
-      s_AppShouldExit = true;
+    if (event == SceneEvent::PAUSE) {
+      if (IsMenuUnloaded()) {
+        LoadMenu({{"New Game", SceneEvent::NEW_GAME},
+                  {"Settings", SceneEvent::SETTINGS},
+                  {"Help", SceneEvent::HELP},
+                  {"Exit", SceneEvent::EXIT}});
+        s_OverlayMenu = true;
+      }
     }
   } break;
   case Scene::GAME: {
@@ -194,7 +196,9 @@ static void HandleSceneEvent() {
       s_AppShouldExit = true;
     } else if (SceneEvent::PAUSE == event) {
       if (IsMenuUnloaded()) {
-        LoadMenu();
+        LoadMenu({{"Continue", SceneEvent::CONTINUE},
+                  {"Restart", SceneEvent::RESTART},
+                  {"Exit", SceneEvent::EXIT}});
         s_OverlayMenu = true;
         SetGameFocus(false);
       }

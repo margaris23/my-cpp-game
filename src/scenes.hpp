@@ -1,18 +1,22 @@
 #ifndef SCENES_H
 #define SCENES_H
+#include <string>
+#include <vector>
 
 enum class Scene {
   NONE,
   INTRO,
-  MENU,
   GAME,
 };
 
 enum class SceneEvent {
   NONE,
-  BACK,
-  NEXT,
+  NEW_GAME,
+  SETTINGS,
+  HELP,
   PAUSE,
+  CONTINUE,
+  RESTART,
   EXIT,
 };
 
@@ -23,8 +27,11 @@ void UpdateIntro(float delta);
 void DrawIntro();
 void UnloadIntro();
 SceneEvent OnIntroEvent();
+void SetIntroFocus();
 
-void LoadMenu();
+using ButtonConfig = std::pair<std::string, SceneEvent>;
+
+void LoadMenu(std::vector<ButtonConfig> &&config);
 void UpdateMenu(float delta);
 void DrawMenu();
 void UnloadMenu();
