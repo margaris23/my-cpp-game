@@ -88,6 +88,9 @@ static void UnloadCurrentScene() {
   case Scene::GAME:
     UnloadGame();
     break;
+  case Scene::NEXT_ROUND:
+    UnloadNextRound();
+    break;
   default:
     break;
   }
@@ -107,6 +110,9 @@ static void LoadScene(Scene scene) {
     case Scene::GAME:
       LoadGame();
       break;
+    case Scene::NEXT_ROUND:
+      LoadNextRound();
+      break;
     default:
       break;
     }
@@ -124,6 +130,9 @@ static void UpdateCurrentScene(float delta) {
   case Scene::GAME:
     UpdateGame(delta);
     break;
+  case Scene::NEXT_ROUND:
+    UpdateNextRound(delta);
+    break;
   default:
     break;
   }
@@ -140,6 +149,9 @@ static void DrawCurrentScene() {
     break;
   case Scene::GAME:
     DrawGame();
+    break;
+  case Scene::NEXT_ROUND:
+    DrawNextRound();
     break;
   default:
     break;
@@ -170,7 +182,6 @@ static void HandleSceneEvent() {
     } else if (event == SceneEvent::NEW_GAME) {
       UnloadMenu();
       s_OverlayMenu = false;
-      UnloadCurrentScene();
       LoadScene(Scene::GAME);
     }
     return;
@@ -190,6 +201,7 @@ static void HandleSceneEvent() {
       }
     }
   } break;
+
   case Scene::GAME: {
     SceneEvent event = OnGameEvent();
     if (event == SceneEvent::EXIT) {
@@ -202,8 +214,19 @@ static void HandleSceneEvent() {
         s_OverlayMenu = true;
         SetGameFocus(false);
       }
+    } else if (SceneEvent::NEXT == event) {
+      fmt::println("LOADING NEXT ROUND");
+      LoadScene(Scene::NEXT_ROUND);
     }
   } break;
+
+  case Scene::NEXT_ROUND: {
+    SceneEvent event = OnNextRoundEvent();
+    if (SceneEvent::NEXT == event) {
+      LoadScene(Scene::GAME);
+    }
+  } break;
+
   default:
     break;
   }

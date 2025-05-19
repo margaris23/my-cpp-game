@@ -94,8 +94,8 @@ void UpdateMenu(float delta) {
   auto selectedBtnComponent = s_Registry->Get<ECS::PositionComponent>(s_SelectedBtn);
   if (selectedBtnComponent) {
     /* TODO: calculate width somehow */
-    selectedBtnComponent->m_value.x = H_CenterText("           ") - 10.f;
-    selectedBtnComponent->m_value.y = 100.f + s_State.selected * 50.f - 10.f;
+    selectedBtnComponent->value.x = H_CenterText("           ") - 10.f;
+    selectedBtnComponent->value.y = 100.f + s_State.selected * 50.f - 10.f;
   }
 }
 

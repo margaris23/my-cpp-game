@@ -4,13 +4,10 @@
 #include "fmt/core.h"
 #include "raylib.h"
 #include "sparse-set.hpp"
-#include <bitset>
 #include <cstdint>
 #include <optional>
 #include <string_view>
 #include <type_traits>
-#include <typeindex>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -43,9 +40,9 @@ enum class Layer : uint8_t { SUB, GROUND, SKY };
 // static ComponentGroups groups; // Mask -> SparseSet<Components>
 
 struct PositionComponent {
-  Vector2 m_value;
-  Entity m_entity;
-  explicit PositionComponent(float x, float y) : m_value(Vector2{x, y}) {}
+  Vector2 value;
+  Entity entity;
+  explicit PositionComponent(float x, float y) : value(Vector2{x, y}) {}
   ~PositionComponent() = default;
   PositionComponent(const PositionComponent &other) = delete;
   PositionComponent(PositionComponent &&other) noexcept = default;
@@ -53,9 +50,9 @@ struct PositionComponent {
 };
 
 struct VelocityComponent {
-  Vector2 m_value;
-  Entity m_entity;
-  explicit VelocityComponent(float x, float y) : m_value(Vector2{x, y}) {}
+  Vector2 value;
+  Entity entity;
+  explicit VelocityComponent(float x, float y) : value(Vector2{x, y}) {}
   ~VelocityComponent() = default;
   VelocityComponent(const VelocityComponent &other) = delete;
   VelocityComponent(VelocityComponent &&other) noexcept = default;
@@ -63,14 +60,13 @@ struct VelocityComponent {
 };
 
 struct ColliderComponent {
-  Vector2 m_dimensions; // width/height or radius based on shape
-  Entity m_entity;
-  Shape m_shape;
-  std::optional<Entity> m_collided_with;
+  Vector2 dimensions; // width/height or radius based on shape
+  Entity entity;
+  Shape shape;
+  std::optional<Entity> collided_with;
   explicit ColliderComponent(float width, float height)
-      : m_dimensions({width, height}), m_shape(Shape::RECTANGLE) {}
-  explicit ColliderComponent(float radius)
-      : m_dimensions({radius, radius}), m_shape(Shape::CIRCLE) {}
+      : dimensions({width, height}), shape(Shape::RECTANGLE) {}
+  explicit ColliderComponent(float radius) : dimensions({radius, radius}), shape(Shape::CIRCLE) {}
   ~ColliderComponent() = default;
   ColliderComponent(const ColliderComponent &other) = delete;
   ColliderComponent(ColliderComponent &&other) noexcept = default;
@@ -79,11 +75,10 @@ struct ColliderComponent {
 
 // TODO: merge with UIComponent
 struct TextComponent {
-  std::string m_value;
-  Color m_color;
-  Entity m_entity;
-  explicit TextComponent(std::string_view text, Color color = BLACK)
-      : m_value(text), m_color(color) {}
+  std::string value;
+  Color color;
+  Entity entity;
+  explicit TextComponent(std::string_view text, Color color = BLACK) : value(text), color(color) {}
   ~TextComponent() = default;
   TextComponent(const TextComponent &other) = delete;
   TextComponent(TextComponent &&other) noexcept = default;
@@ -91,9 +86,9 @@ struct TextComponent {
 };
 
 struct ForceComponent {
-  Vector2 m_value;
-  Entity m_entity;
-  explicit ForceComponent(float x, float y) : m_value(Vector2{x, y}) {}
+  Vector2 value;
+  Entity entity;
+  explicit ForceComponent(float x, float y) : value(Vector2{x, y}) {}
   ~ForceComponent() = default;
   ForceComponent(const ForceComponent &other) = delete;
   ForceComponent(ForceComponent &&other) noexcept = default;
@@ -101,12 +96,12 @@ struct ForceComponent {
 };
 
 struct UIComponent {
-  UIElement m_type;
-  Entity m_entity;
-  std::optional<Entity> m_selectedEntity;
-  explicit UIComponent(UIElement type) : m_type(type) {}
+  UIElement type;
+  Entity entity;
+  std::optional<Entity> selectedEntity;
+  explicit UIComponent(UIElement type) : type(type) {}
   explicit UIComponent(UIElement type, Entity selectedEntity)
-      : m_type(type), m_selectedEntity(selectedEntity) {}
+      : type(type), selectedEntity(selectedEntity) {}
   ~UIComponent() = default;
   UIComponent(const UIComponent &other) = delete;
   UIComponent(UIComponent &&other) noexcept = default;
@@ -115,29 +110,28 @@ struct UIComponent {
 
 // RenderComponent is for primitive drawables
 struct RenderComponent {
-  Color m_color;
-  Vector2 m_dimensions; // width/height or radius based on shape
-  Entity m_entity;
-  Shape m_shape;
-  Layer m_priority; // for layering
+  Color color;
+  Vector2 dimensions; // width/height or radius based on shape
+  Entity entity;
+  Shape shape;
+  Layer priority; // for layering
   RenderComponent(Layer priority, Shape shape, Color color, float width, float height)
-      : m_priority(priority), m_color(color), m_dimensions({width, height}), m_shape(shape) {}
+      : priority(priority), color(color), dimensions({width, height}), shape(shape) {}
   RenderComponent(Layer priority, Shape shape, Color color, float radius)
-      : m_priority(priority), m_color(color), m_dimensions({radius, radius}), m_shape(shape) {}
+      : priority(priority), color(color), dimensions({radius, radius}), shape(shape) {}
   ~RenderComponent() = default;
   RenderComponent(const RenderComponent &other) = delete;
   RenderComponent(RenderComponent &&other) noexcept = default;
   RenderComponent &operator=(RenderComponent &&rhs) noexcept = default;
   bool IsVisible() {
-    return Shape::CIRCLE == m_shape && m_dimensions.x > 0.f ||
-           m_dimensions.x > 0.f && m_dimensions.y > 0.f;
+    return Shape::CIRCLE == shape && dimensions.x > 0.f || dimensions.x > 0.f && dimensions.y > 0.f;
   }
 };
 
 struct HealthComponent {
-  float m_value;
-  Entity m_entity;
-  explicit HealthComponent(float health) : m_value(health) {}
+  float value;
+  Entity entity;
+  explicit HealthComponent(float health) : value(health) {}
   ~HealthComponent() = default;
   HealthComponent(const HealthComponent &other) = delete;
   HealthComponent(HealthComponent &&other) noexcept = default;
@@ -145,9 +139,9 @@ struct HealthComponent {
 };
 
 struct DmgComponent {
-  float m_value;
-  Entity m_entity;
-  explicit DmgComponent(float health) : m_value(health) {}
+  float value;
+  Entity entity;
+  explicit DmgComponent(float health) : value(health) {}
   ~DmgComponent() = default;
   DmgComponent(const DmgComponent &other) = delete;
   DmgComponent(DmgComponent &&other) noexcept = default;
@@ -155,11 +149,11 @@ struct DmgComponent {
 };
 
 struct WeaponComponent {
-  Entity m_shooter;
-  float m_max_length;
-  Entity m_entity;
+  Entity shooter;
+  float max_length;
+  Entity entity;
   explicit WeaponComponent(Entity shooter, float max_length)
-      : m_shooter(shooter), m_max_length(max_length) {}
+      : shooter(shooter), max_length(max_length) {}
   ~WeaponComponent() = default;
   WeaponComponent(const WeaponComponent &other) = delete;
   WeaponComponent(WeaponComponent &&other) noexcept = default;
@@ -169,9 +163,9 @@ struct WeaponComponent {
 using GameStateValue = float; // std::variant<float, int>;
 
 struct GameStateComponent {
-  GameStateValue m_value;
-  Entity m_entity;
-  explicit GameStateComponent(GameStateValue value) : m_value(value) {}
+  GameStateValue value;
+  Entity entity;
+  explicit GameStateComponent(GameStateValue value) : value(value) {}
   ~GameStateComponent() = default;
   GameStateComponent(const GameStateComponent &other) = delete;
   GameStateComponent(GameStateComponent &&other) noexcept = default;
@@ -200,28 +194,28 @@ public:
     T component{std::forward<Args>(args)...};
 
     if constexpr (std::is_same_v<T, PositionComponent>) {
-      return positions.Add(entity, std::move(component));
+      return m_positions.Add(entity, std::move(component));
     } else if constexpr (std::is_same_v<T, VelocityComponent>) {
-      return velocities.Add(entity, std::move(component));
+      return m_velocities.Add(entity, std::move(component));
     } else if constexpr (std::is_same_v<T, ColliderComponent>) {
-      return colliders.Add(entity, std::move(component));
+      return m_colliders.Add(entity, std::move(component));
     } else if constexpr (std::is_same_v<T, TextComponent>) {
-      return texts.Add(entity, std::move(component));
+      return m_texts.Add(entity, std::move(component));
     } else if constexpr (std::is_same_v<T, RenderComponent>) {
       m_renders_sorted = false;
-      return renders.Add(entity, std::move(component));
+      return m_renders.Add(entity, std::move(component));
     } else if constexpr (std::is_same_v<T, ForceComponent>) {
-      return forces.Add(entity, std::move(component));
+      return m_forces.Add(entity, std::move(component));
     } else if constexpr (std::is_same_v<T, UIComponent>) {
-      return widgets.Add(entity, std::move(component));
+      return m_widgets.Add(entity, std::move(component));
     } else if constexpr (std::is_same_v<T, HealthComponent>) {
-      return healths.Add(entity, std::move(component));
+      return m_healths.Add(entity, std::move(component));
     } else if constexpr (std::is_same_v<T, DmgComponent>) {
-      return dmgs.Add(entity, std::move(component));
+      return m_dmgs.Add(entity, std::move(component));
     } else if constexpr (std::is_same_v<T, GameStateComponent>) {
-      return stateValues.Add(entity, std::move(component));
+      return m_stateValues.Add(entity, std::move(component));
     } else if constexpr (std::is_same_v<T, WeaponComponent>) {
-      return weapons.Add(entity, std::move(component));
+      return m_weapons.Add(entity, std::move(component));
     }
 
     return false;
@@ -229,72 +223,73 @@ public:
 
   template <typename T> void Remove(Entity entity) {
     if constexpr (std::is_same_v<T, PositionComponent>) {
-      positions.Remove(entity);
+      m_positions.Remove(entity);
     } else if constexpr (std::is_same_v<T, VelocityComponent>) {
-      velocities.Remove(entity);
+      m_velocities.Remove(entity);
     } else if constexpr (std::is_same_v<T, ColliderComponent>) {
-      colliders.Remove(entity);
+      m_colliders.Remove(entity);
     } else if constexpr (std::is_same_v<T, TextComponent>) {
-      texts.Remove(entity);
+      m_texts.Remove(entity);
     } else if constexpr (std::is_same_v<T, RenderComponent>) {
-      renders.Remove(entity);
+      m_renders.Remove(entity);
     } else if constexpr (std::is_same_v<T, ForceComponent>) {
-      forces.Remove(entity);
+      m_forces.Remove(entity);
     } else if constexpr (std::is_same_v<T, UIComponent>) {
-      widgets.Remove(entity);
+      m_widgets.Remove(entity);
     } else if constexpr (std::is_same_v<T, HealthComponent>) {
-      healths.Remove(entity);
+      m_healths.Remove(entity);
     } else if constexpr (std::is_same_v<T, DmgComponent>) {
-      dmgs.Remove(entity);
+      m_dmgs.Remove(entity);
     } else if constexpr (std::is_same_v<T, GameStateComponent>) {
-      stateValues.Remove(entity);
+      m_stateValues.Remove(entity);
     } else if constexpr (std::is_same_v<T, WeaponComponent>) {
-      weapons.Remove(entity);
+      m_weapons.Remove(entity);
     }
   }
 
   template <typename T> T *Get(Entity entity) {
     if constexpr (std::is_same_v<T, PositionComponent>) {
-      return positions.Get(entity);
+      return m_positions.Get(entity);
     } else if constexpr (std::is_same_v<T, VelocityComponent>) {
-      return velocities.Get(entity);
+      return m_velocities.Get(entity);
     } else if constexpr (std::is_same_v<T, ColliderComponent>) {
-      return colliders.Get(entity);
+      return m_colliders.Get(entity);
     } else if constexpr (std::is_same_v<T, TextComponent>) {
-      return texts.Get(entity);
+      return m_texts.Get(entity);
     } else if constexpr (std::is_same_v<T, RenderComponent>) {
-      return renders.Get(entity);
+      return m_renders.Get(entity);
     } else if constexpr (std::is_same_v<T, ForceComponent>) {
-      return forces.Get(entity);
+      return m_forces.Get(entity);
     } else if constexpr (std::is_same_v<T, UIComponent>) {
-      return widgets.Get(entity);
+      return m_widgets.Get(entity);
     } else if constexpr (std::is_same_v<T, HealthComponent>) {
-      return healths.Get(entity);
+      return m_healths.Get(entity);
     } else if constexpr (std::is_same_v<T, DmgComponent>) {
-      return dmgs.Get(entity);
+      return m_dmgs.Get(entity);
     } else if constexpr (std::is_same_v<T, GameStateComponent>) {
-      return stateValues.Get(entity);
+      return m_stateValues.Get(entity);
     } else if constexpr (std::is_same_v<T, WeaponComponent>) {
-      return weapons.Get(entity);
+      return m_weapons.Get(entity);
     }
 
     return nullptr;
   }
 
 private:
-  std::vector<Entity> entities;
+  size_t m_entityCounter = 0;
+  std::vector<Entity> m_entities;
 
-  SparseSet<PositionComponent> positions;
-  SparseSet<VelocityComponent> velocities;
-  SparseSet<ColliderComponent> colliders;
-  SparseSet<TextComponent> texts;
-  SparseSet<ForceComponent> forces;
-  SparseSet<RenderComponent> renders;
-  SparseSet<UIComponent> widgets;
-  SparseSet<HealthComponent> healths;
-  SparseSet<DmgComponent> dmgs;
-  SparseSet<GameStateComponent> stateValues;
-  SparseSet<WeaponComponent> weapons;
+  SparseSet<PositionComponent> m_positions;
+  SparseSet<VelocityComponent> m_velocities;
+  SparseSet<ColliderComponent> m_colliders;
+  SparseSet<TextComponent> m_texts;
+  SparseSet<ForceComponent> m_forces;
+  SparseSet<RenderComponent> m_renders;
+  SparseSet<UIComponent> m_widgets;
+  SparseSet<HealthComponent> m_healths;
+  SparseSet<DmgComponent> m_dmgs;
+  SparseSet<GameStateComponent> m_stateValues;
+  SparseSet<WeaponComponent> m_weapons;
 
   void CleanupEntity(Entity entity);
 

@@ -36,7 +36,7 @@ public:
   // TODO: handle resize
   bool Add(size_t id, T &&denseItem) {
     if (!contains(id)) {
-      denseItem.m_entity = id;
+      denseItem.entity = id;
       sparse.at(id) = dense.size();
       dense.push_back(std::move(denseItem));
       return true;
@@ -47,7 +47,7 @@ public:
   T *Get(size_t id) {
     if (id < sparse.size()) {
       size_t denseIndex = sparse.at(id);
-      if (denseIndex != EMPTY && dense.at(denseIndex).m_entity == id) {
+      if (denseIndex != EMPTY && dense.at(denseIndex).entity == id) {
         return &(dense.at(denseIndex));
       }
     }
@@ -59,7 +59,7 @@ public:
     // fmt::println("REMOVING {} for {}", typeid(T).name(), entity);
     if (contains(entity)) {
       size_t index = sparse.at(entity);
-      size_t last_items_entity = dense.at(dense.size() - 1).m_entity;
+      size_t last_items_entity = dense.at(dense.size() - 1).entity;
       std::swap(dense.at(dense.size() - 1), dense.at(index));
       sparse.at(last_items_entity) = index;
       sparse.at(entity) = EMPTY;

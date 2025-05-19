@@ -10,20 +10,16 @@ namespace ECS {
 
 // std::unordered_map<std::type_index, std::bitset<MAX_COMPONENTS>> s_typeToBitSetMap;
 
-namespace {
-size_t entityCounter = 0;
-}
-
 Entity Registry::CreateEntity() {
-  size_t index = entityCounter++;
-  entities.push_back(index);
+  size_t index = m_entityCounter++;
+  m_entities.push_back(index);
   return index;
 }
 
 Registry::~Registry() {
-  for (auto it = entities.begin(); it != entities.end();) {
+  for (auto it = m_entities.begin(); it != m_entities.end();) {
     CleanupEntity(*it);
-    it = entities.erase(it);
+    it = m_entities.erase(it);
   }
 }
 
@@ -44,8 +40,8 @@ void Registry::CleanupEntity(Entity entity) {
 }
 
 void Registry::DeleteEntity(Entity entity) {
-  const auto &it = std::remove(entities.begin(), entities.end(), entity);
-  entities.pop_back();
+  const auto &it = std::remove(m_entities.begin(), m_entities.end(), entity);
+  m_entities.pop_back();
   CleanupEntity(entity);
 }
 
@@ -58,54 +54,54 @@ void Registry::PositionSystem() {
   float screen_width = GetScreenWidth();
   float screen_height = GetScreenHeight();
 
-  for (auto &pos : positions.dense) {
-    const auto force = forces.Get(pos.m_entity);
-    auto velocity = velocities.Get(pos.m_entity);
-    auto weapon = weapons.Get(pos.m_entity);
+  for (auto &pos : m_positions.dense) {
+    const auto force = m_forces.Get(pos.entity);
+    auto velocity = m_velocities.Get(pos.entity);
+    auto weapon = m_weapons.Get(pos.entity);
 
     if (force) {
       if (velocity) {
-        velocity->m_value.x += force->m_value.x;
-        velocity->m_value.y += force->m_value.y;
+        velocity->value.x += force->value.x;
+        velocity->value.y += force->value.y;
       } else {
-        pos.m_value.x += force->m_value.x;
-        pos.m_value.y += force->m_value.y;
+        pos.value.x += force->value.x;
+        pos.value.y += force->value.y;
       }
     } else if (velocity) {
-      pos.m_value.x += velocity->m_value.x;
-      pos.m_value.y += velocity->m_value.y;
+      pos.value.x += velocity->value.x;
+      pos.value.y += velocity->value.y;
     } else if (weapon) {
-      const auto shooterPos = positions.Get(weapon->m_shooter);
+      const auto shooterPos = m_positions.Get(weapon->shooter);
       // weapon position: custom offsets for now
-      pos.m_value.x = shooterPos->m_value.x - 5.f;
-      pos.m_value.y = shooterPos->m_value.y + 8.f;
+      pos.value.x = shooterPos->value.x - 5.f;
+      pos.value.y = shooterPos->value.y + 8.f;
     }
 
     // ideally, size should be included
-    if (pos.m_value.x < -30.f) {
-      pos.m_value.x = screen_width;
-    } else if (pos.m_value.x > screen_width + 30.f) {
-      pos.m_value.x = 0;
+    if (pos.value.x < -30.f) {
+      pos.value.x = screen_width;
+    } else if (pos.value.x > screen_width + 30.f) {
+      pos.value.x = 0;
     }
 
-    if (pos.m_value.y < -30.f) {
-      pos.m_value.y = screen_height;
-    } else if (pos.m_value.y > screen_height + 30.f) {
-      pos.m_value.y = 0;
+    if (pos.value.y < -30.f) {
+      pos.value.y = screen_height;
+    } else if (pos.value.y > screen_height + 30.f) {
+      pos.value.y = 0;
     }
   }
 }
 
 bool HandleCollision(ColliderComponent &colA, ColliderComponent &colB,
                      const PositionComponent *posA, const PositionComponent *posB) {
-  const auto &dimA = colA.m_dimensions;
+  const auto &dimA = colA.dimensions;
 
-  bool collides = CheckCollisionCircleRec(posB->m_value, colB.m_dimensions.x,
-                                          {posA->m_value.x, posA->m_value.y, dimA.x, dimA.y});
+  bool collides = CheckCollisionCircleRec(posB->value, colB.dimensions.x,
+                                          {posA->value.x, posA->value.y, dimA.x, dimA.y});
 
   if (collides) {
-    colA.m_collided_with = colB.m_entity;
-    colB.m_collided_with = colA.m_entity;
+    colA.collided_with = colB.entity;
+    colB.collided_with = colA.entity;
     return true;
   }
 
@@ -113,13 +109,13 @@ bool HandleCollision(ColliderComponent &colA, ColliderComponent &colB,
 }
 
 void Registry::CollisionDetectionSystem() {
-  const auto &positionComponents = positions.dense;
-  auto &colliderComps = colliders.dense;
+  const auto &positionComponents = m_positions.dense;
+  auto &colliderComps = m_colliders.dense;
 
   for (size_t indexA = 0; indexA < colliderComps.size() - 1; indexA++) {
-    for (size_t indexB = indexA + 1; indexB < colliders.dense.size(); indexB++) {
-      auto posA = positions.Get(colliderComps[indexA].m_entity);
-      auto posB = positions.Get(colliderComps[indexB].m_entity);
+    for (size_t indexB = indexA + 1; indexB < m_colliders.dense.size(); indexB++) {
+      auto posA = m_positions.Get(colliderComps[indexA].entity);
+      auto posB = m_positions.Get(colliderComps[indexB].entity);
 
       // TODO: Need to address this later
       if (!posB || !posA) {
@@ -131,13 +127,13 @@ void Registry::CollisionDetectionSystem() {
       // Circles are expected to be our Meteors
       // Circles do not expect to collide each other so,
       // Rectangle is expected to collide with only 1 Circle
-      if (Shape::RECTANGLE == colliderComps[indexA].m_shape &&
-          Shape::CIRCLE == colliderComps[indexB].m_shape) {
+      if (Shape::RECTANGLE == colliderComps[indexA].shape &&
+          Shape::CIRCLE == colliderComps[indexB].shape) {
         if (HandleCollision(colliderComps[indexA], colliderComps[indexB], posA, posB)) {
           break;
         }
-      } else if (Shape::RECTANGLE == colliderComps[indexB].m_shape &&
-                 Shape::CIRCLE == colliderComps[indexA].m_shape) {
+      } else if (Shape::RECTANGLE == colliderComps[indexB].shape &&
+                 Shape::CIRCLE == colliderComps[indexA].shape) {
         if (HandleCollision(colliderComps[indexB], colliderComps[indexA], posB, posA)) {
           break;
         }
@@ -147,53 +143,53 @@ void Registry::CollisionDetectionSystem() {
 }
 
 void Registry::CollisionResolutionSystem() {
-  for (auto &collider : colliders.dense) {
-    if (collider.m_collided_with.has_value()) {
-      auto health = healths.Get(collider.m_entity);
-      auto dmg = dmgs.Get(collider.m_collided_with.value());
+  for (auto &collider : m_colliders.dense) {
+    if (collider.collided_with.has_value()) {
+      auto health = m_healths.Get(collider.entity);
+      auto dmg = m_dmgs.Get(collider.collided_with.value());
       if (health && dmg) {
-        health->m_value -= dmg->m_value;
+        health->value -= dmg->value;
 
         // constraint
-        if (health->m_value < 0) {
-          health->m_value = 0;
+        if (health->value < 0) {
+          health->value = 0;
         }
 
         // Need to add Bounce physics
         // Need to know: pos and dir ???
-        // auto pos = positions.Get(collider.m_entity);
-        // Add<ForceComponent>(collider.m_entity, -10.f, -10.f);
+        // auto pos = positions.Get(collider.entity);
+        // Add<ForceComponent>(collider.entity, -10.f, -10.f);
       }
-      collider.m_collided_with.reset();
+      collider.collided_with.reset();
     }
   }
 }
 
 void Registry::UISystem() {
-  for (auto &widget : widgets.dense) {
-    auto widgetPos = positions.Get(widget.m_entity);
+  for (auto &widget : m_widgets.dense) {
+    auto widgetPos = m_positions.Get(widget.entity);
 
     // Handle selected widget logic ... Like a focus
-    if (widget.m_selectedEntity.has_value()) {
-      auto selectedWidgetPos = positions.Get(widget.m_selectedEntity.value());
+    if (widget.selectedEntity.has_value()) {
+      auto selectedWidgetPos = m_positions.Get(widget.selectedEntity.value());
 
       if (widgetPos && selectedWidgetPos) {
-        widgetPos->m_value.x = selectedWidgetPos->m_value.x;
-        widgetPos->m_value.y = selectedWidgetPos->m_value.y;
+        widgetPos->value.x = selectedWidgetPos->value.x;
+        widgetPos->value.y = selectedWidgetPos->value.y;
       }
       // ECS::Add<ECS::PositionComponent>(s_SelectedBtn, H_CenterText("New Game") -
       // padding, 100.f - padding); ECS::Add<ECS::eenderComponent>(s_SelectedBtn,
       // textWidth + 2.f * padding, 20.f + 2 * padding);  // Rectangle
-    } else if (UIElement::BAR == widget.m_type) {
-      const auto state = stateValues.Get(widget.m_entity);
+    } else if (UIElement::BAR == widget.type) {
+      const auto state = m_stateValues.Get(widget.entity);
       if (state) {
-        DrawRectangle(widgetPos->m_value.x, widgetPos->m_value.y, state->m_value * 10, 20, BLACK);
+        DrawRectangle(widgetPos->value.x, widgetPos->value.y, state->value * 10, 20, BLACK);
       }
     }
     // else if (UIElement::TEXT == widget.m_type) {
-    //   const auto text = texts.Get(widget.m_entity);
+    //   const auto text = texts.Get(widget.entity);
     //   if (text) {
-    //     DrawText(text->m_value.c_str(), widgetPos->m_value.x, widgetPos->m_value.y, 20,
+    //     DrawText(text->value.c_str(), widgetPos->value.x, widgetPos->value.y, 20,
     //     BLACK);
     //   }
     // }
@@ -202,52 +198,52 @@ void Registry::UISystem() {
 
 struct {
   bool operator()(const RenderComponent &lhs, const RenderComponent &rhs) {
-    return lhs.m_priority < rhs.m_priority;
+    return lhs.priority < rhs.priority;
   }
 } compareLayer;
 
 void Registry::RenderSystem() {
   if (!m_renders_sorted) {
     // Sort by Layer
-    std::sort(renders.dense.begin(), renders.dense.end(), compareLayer);
+    std::sort(m_renders.dense.begin(), m_renders.dense.end(), compareLayer);
     // Update sparse indexing
-    for (int i = 0; i < renders.dense.size(); i++) {
-      renders.sparse[renders.dense[i].m_entity] = i;
+    for (int i = 0; i < m_renders.dense.size(); i++) {
+      m_renders.sparse[m_renders.dense[i].entity] = i;
     }
     m_renders_sorted = true;
   }
 
   // SHAPES
-  for (auto &render : renders.dense) {
-    const auto pos = positions.Get(render.m_entity);
+  for (auto &render : m_renders.dense) {
+    const auto pos = m_positions.Get(render.entity);
     if (render.IsVisible()) {
-      if (Shape::RECTANGLE == render.m_shape) {
-        DrawRectangleLines(pos->m_value.x, pos->m_value.y, render.m_dimensions.x,
-                           render.m_dimensions.y, render.m_color);
-        // DrawRectangle(pos->m_value.x + 1.f, pos->m_value.y + 1.f,
-        //               render.m_dimensions.x - 2.f, render.m_dimensions.y - 2.f,
+      if (Shape::RECTANGLE == render.shape) {
+        DrawRectangleLines(pos->value.x, pos->value.y, render.dimensions.x, render.dimensions.y,
+                           render.color);
+        // DrawRectangle(pos->value.x + 1.f, pos->value.y + 1.f,
+        //               render.dimensions.x - 2.f, render.dimensions.y - 2.f,
         //               RAYWHITE);
-      } else if (Shape::ELLIPSE == render.m_shape) {
-        DrawEllipseLines(pos->m_value.x, pos->m_value.y, render.m_dimensions.x,
-                         render.m_dimensions.y, render.m_color);
-      } else if (Shape::CIRCLE == render.m_shape) {
-        DrawCircle(pos->m_value.x, pos->m_value.y, render.m_dimensions.x, render.m_color);
-        // DrawCircle(pos->m_value.x, pos->m_value.y, 10.f, render.m_color);
-      } else if (Shape::RECTANGLE_SOLID == render.m_shape) {
-        DrawRectangle(pos->m_value.x, pos->m_value.y, render.m_dimensions.x, render.m_dimensions.y,
-                      render.m_color);
+      } else if (Shape::ELLIPSE == render.shape) {
+        DrawEllipseLines(pos->value.x, pos->value.y, render.dimensions.x, render.dimensions.y,
+                         render.color);
+      } else if (Shape::CIRCLE == render.shape) {
+        DrawCircle(pos->value.x, pos->value.y, render.dimensions.x, render.color);
+        // DrawCircle(pos->value.x, pos->value.y, 10.f, render.color);
+      } else if (Shape::RECTANGLE_SOLID == render.shape) {
+        DrawRectangle(pos->value.x, pos->value.y, render.dimensions.x, render.dimensions.y,
+                      render.color);
       }
       // TODO: add more...
     }
   }
 
   // TEXTS
-  for (const auto &text : texts.dense) {
-    const auto pos = positions.Get(text.m_entity);
-    DrawText(text.m_value.c_str(), pos->m_value.x, pos->m_value.y, 20, text.m_color);
+  for (const auto &text : m_texts.dense) {
+    const auto pos = m_positions.Get(text.entity);
+    DrawText(text.value.c_str(), pos->value.x, pos->value.y, 20, text.color);
   }
 }
 
-void Registry::ResetSystem() { forces.Reset(); }
+void Registry::ResetSystem() { m_forces.Reset(); }
 
 } // namespace ECS

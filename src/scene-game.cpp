@@ -153,10 +153,13 @@ void UpdateGame(float delta) {
   // check if round is won or lost
   if (s_cores.size() == 0) {
     s_state = GameState::WON;
+    s_Event = SceneEvent::NEXT;
+    return;
   } else {
     auto lives = s_Registry->Get<GameStateComponent>(s_spaceshipLives);
-    if (lives->m_value == 0) {
+    if (lives && lives->value == 0) {
       s_state = GameState::LOST;
+      return;
     }
   }
 
@@ -170,24 +173,26 @@ void UpdateGame(float delta) {
 
     // TODO: implement a force accumulator
     auto force = s_Registry->Get<ForceComponent>(s_spaceShip);
-    force->m_value.x = 0;
-    force->m_value.y = 0;
+    if (force) {
+      force->value.x = 0;
+      force->value.y = 0;
 
-    if (IsKeyDown(KEY_RIGHT)) {
-      force->m_value.x = 1.f;
+      if (IsKeyDown(KEY_RIGHT)) {
+        force->value.x = 1.f;
+      }
+      if (IsKeyDown(KEY_LEFT)) {
+        force->value.x = -1.f;
+      }
+      if (IsKeyDown(KEY_UP)) {
+        force->value.y = -1.f;
+      }
+      if (IsKeyDown(KEY_DOWN)) {
+        force->value.y = 1.f;
+      }
+      force->value = Vector2Normalize(force->value);
+      force->value.x *= 5.f;
+      force->value.y *= 5.f;
     }
-    if (IsKeyDown(KEY_LEFT)) {
-      force->m_value.x = -1.f;
-    }
-    if (IsKeyDown(KEY_UP)) {
-      force->m_value.y = -1.f;
-    }
-    if (IsKeyDown(KEY_DOWN)) {
-      force->m_value.y = 1.f;
-    }
-    force->m_value = Vector2Normalize(force->m_value);
-    force->m_value.x *= 5.f;
-    force->m_value.y *= 5.f;
 
     // WEAPON FIRING
     if (IsKeyDown(KEY_SPACE)) {
@@ -202,17 +207,17 @@ void UpdateGame(float delta) {
         auto beam_collider = s_Registry->Get<ColliderComponent>(s_miningBeam);
 
         if (beam_collider) {
-          if (!beam_collider->m_collided_with.has_value() && s_firingDuration < 24.f) {
+          if (!beam_collider->collided_with.has_value() && s_firingDuration < 24.f) {
             ++s_firingDuration;
           }
 
           // Ease(now, start, max_change, duration)
           float tween = EaseLinearIn(s_firingDuration, 10.f, WEAPON_MAX_DISTANCE - 10.f, 24.f);
-          beam_collider->m_dimensions.y = tween;
+          beam_collider->dimensions.y = tween;
 
           auto beam_render = s_Registry->Get<RenderComponent>(s_miningBeam);
           if (beam_render) {
-            beam_render->m_dimensions.y = tween;
+            beam_render->dimensions.y = tween;
           }
         }
       }
@@ -233,7 +238,7 @@ void UpdateGame(float delta) {
   // Reset spaceship in case collider was removed
   if (!s_Registry->Get<ColliderComponent>(s_spaceShip)) {
     auto health = s_Registry->Get<HealthComponent>(s_spaceShip);
-    health->m_value = SPACESHIP_INITIAL_HEALTH;
+    health->value = SPACESHIP_INITIAL_HEALTH;
     s_Registry->Add<ColliderComponent>(s_spaceShip, SPACESHIP_SIZE.x, SPACESHIP_SIZE.y);
   }
 
@@ -245,30 +250,30 @@ void UpdateGame(float delta) {
   auto cores_count = s_Registry->Get<GameStateComponent>(s_coresCount);
   for (const auto &core : s_cores) {
     const auto &collider = s_Registry->Get<ColliderComponent>(core);
-    if (collider && collider->m_collided_with.has_value()) {
-      ++cores_count->m_value;
+    if (collider && collider->collided_with.has_value()) {
+      ++cores_count->value;
     }
   }
   auto coresCount_text = s_Registry->Get<TextComponent>(s_coresCount);
-  coresCount_text->m_value = fmt::format("{} Cores", cores_count->m_value);
+  coresCount_text->value = fmt::format("{} Cores", cores_count->value);
   // SCORE
   auto score = s_Registry->Get<GameStateComponent>(s_score);
   for (const auto &meteor : s_meteors) {
     const auto &collider = s_Registry->Get<ColliderComponent>(meteor);
-    if (collider && collider->m_collided_with.has_value()) {
+    if (collider && collider->collided_with.has_value()) {
       // Let's earn 1 point for every hit for now....
-      ++score->m_value;
+      ++score->value;
     }
   }
   auto score_text = s_Registry->Get<TextComponent>(s_score);
-  score_text->m_value = fmt::format("{}", score->m_value);
+  score_text->value = fmt::format("{}", score->value);
 
   s_Registry->CollisionResolutionSystem();
 
   // Kill s_cores with zero health
   for (auto core_it = s_cores.begin(); core_it != s_cores.end();) {
     const auto core_health = s_Registry->Get<HealthComponent>(*core_it);
-    if (core_health && core_health->m_value == 0) {
+    if (core_health && core_health->value == 0) {
       s_Registry->DeleteEntity(*core_it);
       core_it = s_cores.erase(core_it);
     } else {
@@ -280,7 +285,7 @@ void UpdateGame(float delta) {
   for (auto it = s_meteors.begin(); it != s_meteors.end();) {
     // Kill s_meteors with zero health
     const auto meteor_health = s_Registry->Get<HealthComponent>(*it);
-    if (meteor_health->m_value < 10.f) {
+    if (meteor_health->value < 10.f) {
       // every core is considered to be before to a meteor
       const Entity core = *it - 1;
 
@@ -294,15 +299,15 @@ void UpdateGame(float delta) {
         // activate core
         auto core_velocity = s_Registry->Get<VelocityComponent>(core);
         if (core_velocity) {
-          core_velocity->m_value.x *= -1;
-          if (core_velocity->m_value.y < 0) {
-            core_velocity->m_value.y *= -1;
+          core_velocity->value.x *= -1;
+          if (core_velocity->value.y < 0) {
+            core_velocity->value.y *= -1;
           }
         }
         auto core_pos = s_Registry->Get<PositionComponent>(core);
         if (core_pos) {
-          core_pos->m_value.x += 10.f;
-          core_pos->m_value.y += 10.f;
+          core_pos->value.x += 10.f;
+          core_pos->value.y += 10.f;
         }
         s_Registry->Add<ColliderComponent>(core, METEOR_CORE_SIZE);
       }
@@ -311,7 +316,7 @@ void UpdateGame(float delta) {
 
     // Update size based on health
     auto render = s_Registry->Get<RenderComponent>(*it);
-    render->m_dimensions.x = meteor_health->m_value;
+    render->dimensions.x = meteor_health->value;
 
     ++it;
   }
@@ -320,24 +325,24 @@ void UpdateGame(float delta) {
   // Sync state with components i.e Spaceship.health -> SpaceShipHealth.state
   const auto health = s_Registry->Get<HealthComponent>(s_spaceShip);
   auto state = s_Registry->Get<GameStateComponent>(s_spaceshipHealth);
-  state->m_value = health->m_value;
+  state->value = health->value;
 
   // Sync Spaceship health/lives (HealthSystem ???)
-  if (health->m_value == 0) {
+  if (health->value == 0) {
     auto spaceship_lives = s_Registry->Get<GameStateComponent>(s_spaceshipLives);
-    --spaceship_lives->m_value;
+    --spaceship_lives->value;
 
     // remove collider so that on next cycle we will reset spaceship
     s_Registry->Remove<ColliderComponent>(s_spaceShip);
 
-    if (spaceship_lives->m_value == 0) {
+    if (spaceship_lives->value == 0) {
       s_state = GameState::LOST;
 
       // TODO: add LOST TEXT entity
     }
 
     auto text = s_Registry->Get<TextComponent>(s_spaceshipLives);
-    text->m_value = fmt::format("{} Lives", spaceship_lives->m_value);
+    text->value = fmt::format("{} Lives", spaceship_lives->value);
   }
 }
 
@@ -385,10 +390,10 @@ void DrawGame() {
   //   const auto &health = s_Registry->Get<HealthComponent>(meteor);
   //   const auto &pos = s_Registry->Get<PositionComponent>(meteor);
   //   const auto &render = s_Registry->Get<s_Registry->RenderComponent>(meteor);
-  //   DrawText(TextFormat("%i", meteor), pos->m_value.x,
-  //            pos->m_value.y + render->m_dimensions.x, 20, GREEN);
-  //   // DrawRectangle(pos->m_value.x + render->m_dimensions.x,
-  //   //               pos->m_value.y + render->m_dimensions.x, health->m_value, 10,
+  //   DrawText(TextFormat("%i", meteor), pos->value.x,
+  //            pos->value.y + render->m_dimensions.x, 20, GREEN);
+  //   // DrawRectangle(pos->value.x + render->m_dimensions.x,
+  //   //               pos->value.y + render->m_dimensions.x, health->value, 10,
   //   BLACK);
   // }
 
@@ -396,10 +401,10 @@ void DrawGame() {
   // for (const auto &core : s_cores) {
   //   const auto &pos = s_Registry->Get<PositionComponent>(core);
   //   const auto &render = s_Registry->Get<s_Registry->RenderComponent>(core);
-  //   DrawText(TextFormat("%i", core), pos->m_value.x,
-  //            pos->m_value.y + render->m_dimensions.x, 20, RED);
-  //   // DrawRectangle(pos->m_value.x + render->m_dimensions.x,
-  //   //               pos->m_value.y + render->m_dimensions.x, health->m_value, 10,
+  //   DrawText(TextFormat("%i", core), pos->value.x,
+  //            pos->value.y + render->m_dimensions.x, 20, RED);
+  //   // DrawRectangle(pos->value.x + render->m_dimensions.x,
+  //   //               pos->value.y + render->m_dimensions.x, health->value, 10,
   //   BLACK);
   // }
 
@@ -413,7 +418,7 @@ void DrawGame() {
   //
   // DrawText(TextFormat("%i", colliders.dense.size()), 10, 70, 20, RED);
   // const auto &beam_pos = s_Registry->Get<PositionComponent>(s_miningBeam);
-  // DrawText(TextFormat("Beam: %f, %f", beam_pos->m_value.x, beam_pos->m_value.y), 10,
+  // DrawText(TextFormat("Beam: %f, %f", beam_pos->value.x, beam_pos->value.y), 10,
   // 50,
   //          20, RED);
 }

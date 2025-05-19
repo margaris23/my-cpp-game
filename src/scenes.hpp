@@ -7,10 +7,12 @@ enum class Scene {
   NONE,
   INTRO,
   GAME,
+  NEXT_ROUND,
 };
 
 enum class SceneEvent {
   NONE,
+  NEXT,
   NEW_GAME,
   SETTINGS,
   HELP,
@@ -45,4 +47,9 @@ void UnloadGame();
 SceneEvent OnGameEvent();
 void SetGameFocus(bool focus);
 
+void LoadNextRound();
+void UpdateNextRound(float delta);
+void DrawNextRound();
+void UnloadNextRound();
+SceneEvent OnNextRoundEvent();
 #endif
