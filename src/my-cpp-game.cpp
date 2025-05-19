@@ -23,7 +23,7 @@ static bool s_AppShouldExit = false;
 static bool s_OverlayMenu = false;
 
 int main(void) {
-  InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "My Game");
+  InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "MINOIDS");
   SetExitKey(KEY_NULL); // disable Esc key
   InitAudioDevice();
 
