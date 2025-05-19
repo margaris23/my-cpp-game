@@ -1,7 +1,6 @@
 #ifndef SPARSE_SET_H
 #define SPARSE_SET_H
 
-#include "fmt/core.h"
 #include <climits>
 #include <cstddef>
 #include <utility>

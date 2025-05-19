@@ -36,7 +36,6 @@ add_executable(${PROJECT_NAME})
 add_subdirectory(src)
 add_compile_options(-g -Wall)
 
-
 target_link_libraries(my-cpp-game fmt::fmt)
 
 set_target_properties(

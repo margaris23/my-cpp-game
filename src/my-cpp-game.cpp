@@ -1,4 +1,3 @@
-#include "fmt/core.h"
 #include "raylib.h"
 #include "scenes.hpp"
 #include <iostream>
@@ -215,7 +214,6 @@ static void HandleSceneEvent() {
         SetGameFocus(false);
       }
     } else if (SceneEvent::NEXT == event) {
-      fmt::println("LOADING NEXT ROUND");
       LoadScene(Scene::NEXT_ROUND);
     }
   } break;

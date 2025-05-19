@@ -1,8 +1,6 @@
 #include "ecs.hpp"
 #include "raylib.h"
 #include "scenes.hpp"
-#include <fmt/core.h>
-#include <fmt/format.h>
 #include <memory>
 
 static int s_counter;

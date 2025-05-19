@@ -1,7 +1,6 @@
 #ifndef ECS_H
 #define ECS_H
 
-#include "fmt/core.h"
 #include "raylib.h"
 #include "sparse-set.hpp"
 #include <cstdint>
@@ -9,6 +8,7 @@
 #include <string_view>
 #include <type_traits>
 #include <utility>
+#include <string>
 #include <vector>
 
 namespace ECS {
