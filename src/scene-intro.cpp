@@ -3,19 +3,22 @@
 #include "scenes.hpp"
 #include <fmt/core.h>
 #include <fmt/format.h>
+#include <memory>
 
 static int s_counter;
 static SceneEvent s_Event = SceneEvent::NONE;
 
-static ECS::Entity s_Title;
+static std::unique_ptr<ECS::Registry> s_Registry;
 
 void LoadIntro() {
   float screen_cw = GetScreenWidth() / 2.f;
   float screen_ch = GetScreenHeight() / 2.f;
 
-  s_Title = ECS::CreateEntity();
-  ECS::Add<ECS::TextComponent>(s_Title, "Minoids");
-  ECS::Add<ECS::PositionComponent>(
+  s_Registry = std::make_unique<ECS::Registry>();
+
+  ECS::Entity s_Title = s_Registry->CreateEntity();
+  s_Registry->Add<ECS::TextComponent>(s_Title, "Minoids");
+  s_Registry->Add<ECS::PositionComponent>(
       s_Title, (float)(GetScreenWidth() - MeasureText("Minoids", 20)) / 2.f,
       (float)GetScreenHeight() / 2.f);
 }
@@ -40,16 +43,16 @@ void UpdateIntro(float delta) {
   //   ECS::Remove<ECS::ForceComponent>(s_Title);
   // }
 
-  ECS::PositionSystem();
+  s_Registry->PositionSystem();
 }
 
 void DrawIntro() {
-  ECS::RenderSystem();
+  s_Registry->RenderSystem();
   // ECS::ResetSystem();
 }
 
 void UnloadIntro() {
-  ECS::DeleteEntity(s_Title);
+  s_Registry.reset();
   s_Event = SceneEvent::NONE;
 }
 

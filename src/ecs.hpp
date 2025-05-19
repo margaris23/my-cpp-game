@@ -19,12 +19,12 @@ namespace ECS {
 using Entity = size_t;
 
 // To be used later: to check whether an entity has a component faster
-constexpr uint8_t MAX_COMPONENTS = 16;
-using ComponentMask = std::bitset<MAX_COMPONENTS>;
-extern std::unordered_map<std::type_index, std::bitset<MAX_COMPONENTS>> s_typeToBitSetMap;
+// constexpr uint8_t MAX_COMPONENTS = 16;
+// using ComponentMask = std::bitset<MAX_COMPONENTS>;
+// extern std::unordered_map<std::type_index, std::bitset<MAX_COMPONENTS>> s_typeToBitSetMap;
 
-template <typename T>
-using ComponentGroups = std::unordered_map<ComponentMask, SparseSet<T>>;
+// template <typename T>
+// using ComponentGroups = std::unordered_map<ComponentMask, SparseSet<T>>;
 
 enum class Shape {
   RECTANGLE,
@@ -36,8 +36,6 @@ enum class UIElement {
   BAR,
 };
 enum class LAYER : uint8_t { SUB, GROUND, SKY };
-
-inline bool renders_sorted;
 
 // static ComponentGroups groups; // Mask -> SparseSet<Components>
 
@@ -179,136 +177,148 @@ struct GameStateComponent {
   GameStateComponent &operator=(GameStateComponent &&rhs) noexcept = default;
 };
 
-extern std::vector<Entity> entities;
+// Used for entities isolation i.e per scene
+class Registry {
+public:
+  Registry() = default;
+  ~Registry();
 
-inline SparseSet<PositionComponent> positions;
-inline SparseSet<VelocityComponent> velocities;
-inline SparseSet<ColliderComponent> colliders;
-inline SparseSet<TextComponent> texts;
-inline SparseSet<ForceComponent> forces;
-inline SparseSet<RenderComponent> renders;
-inline SparseSet<UIComponent> widgets;
-inline SparseSet<HealthComponent> healths;
-inline SparseSet<DmgComponent> dmgs;
-inline SparseSet<GameStateComponent> stateValues;
-inline SparseSet<WeaponComponent> weapons;
+  Entity CreateEntity();
 
-Entity CreateEntity();
+  void Init();
+  void DeleteEntity(Entity entity);
+  void RenderSystem();
+  void ResetSystem();
+  void PositionSystem();
+  void UISystem();
+  void CollisionDetectionSystem();
+  void CollisionResolutionSystem();
 
-void Init();
-void DeleteEntity(Entity entity);
-void RenderSystem();
-void ResetSystem();
-void PositionSystem();
-void UISystem();
-void CollisionDetectionSystem();
-void CollisionResolutionSystem();
+  // TEMPLATES
+  template <typename T, typename... Args> bool Add(Entity entity, Args &&...args) {
+    T component{std::forward<Args>(args)...};
 
-// TEMPLATES
-template <typename T, typename... Args> bool Add(Entity entity, Args &&...args) {
-  T component{std::forward<Args>(args)...};
+    if constexpr (std::is_same_v<T, PositionComponent>) {
+      return positions.Add(entity, std::move(component));
+    } else if constexpr (std::is_same_v<T, VelocityComponent>) {
+      return velocities.Add(entity, std::move(component));
+    } else if constexpr (std::is_same_v<T, ColliderComponent>) {
+      return colliders.Add(entity, std::move(component));
+    } else if constexpr (std::is_same_v<T, TextComponent>) {
+      return texts.Add(entity, std::move(component));
+    } else if constexpr (std::is_same_v<T, RenderComponent>) {
+      m_renders_sorted = false;
+      return renders.Add(entity, std::move(component));
+    } else if constexpr (std::is_same_v<T, ForceComponent>) {
+      return forces.Add(entity, std::move(component));
+    } else if constexpr (std::is_same_v<T, UIComponent>) {
+      return widgets.Add(entity, std::move(component));
+    } else if constexpr (std::is_same_v<T, HealthComponent>) {
+      return healths.Add(entity, std::move(component));
+    } else if constexpr (std::is_same_v<T, DmgComponent>) {
+      return dmgs.Add(entity, std::move(component));
+    } else if constexpr (std::is_same_v<T, GameStateComponent>) {
+      return stateValues.Add(entity, std::move(component));
+    } else if constexpr (std::is_same_v<T, WeaponComponent>) {
+      return weapons.Add(entity, std::move(component));
+    }
 
-  if constexpr (std::is_same_v<T, PositionComponent>) {
-    return positions.Add(entity, std::move(component));
-  } else if constexpr (std::is_same_v<T, VelocityComponent>) {
-    return velocities.Add(entity, std::move(component));
-  } else if constexpr (std::is_same_v<T, ColliderComponent>) {
-    return colliders.Add(entity, std::move(component));
-  } else if constexpr (std::is_same_v<T, TextComponent>) {
-    return texts.Add(entity, std::move(component));
-  } else if constexpr (std::is_same_v<T, RenderComponent>) {
-    renders_sorted = false;
-    return renders.Add(entity, std::move(component));
-  } else if constexpr (std::is_same_v<T, ForceComponent>) {
-    return forces.Add(entity, std::move(component));
-  } else if constexpr (std::is_same_v<T, UIComponent>) {
-    return widgets.Add(entity, std::move(component));
-  } else if constexpr (std::is_same_v<T, HealthComponent>) {
-    return healths.Add(entity, std::move(component));
-  } else if constexpr (std::is_same_v<T, DmgComponent>) {
-    return dmgs.Add(entity, std::move(component));
-  } else if constexpr (std::is_same_v<T, GameStateComponent>) {
-    return stateValues.Add(entity, std::move(component));
-  } else if constexpr (std::is_same_v<T, WeaponComponent>) {
-    return weapons.Add(entity, std::move(component));
+    return false;
   }
 
-  return false;
-}
-
-template <typename T> void Remove(Entity entity) {
-  if constexpr (std::is_same_v<T, PositionComponent>) {
-    positions.Remove(entity);
-  } else if constexpr (std::is_same_v<T, VelocityComponent>) {
-    velocities.Remove(entity);
-  } else if constexpr (std::is_same_v<T, ColliderComponent>) {
-    colliders.Remove(entity);
-  } else if constexpr (std::is_same_v<T, TextComponent>) {
-    texts.Remove(entity);
-  } else if constexpr (std::is_same_v<T, RenderComponent>) {
-    renders.Remove(entity);
-  } else if constexpr (std::is_same_v<T, ForceComponent>) {
-    forces.Remove(entity);
-  } else if constexpr (std::is_same_v<T, UIComponent>) {
-    widgets.Remove(entity);
-  } else if constexpr (std::is_same_v<T, HealthComponent>) {
-    healths.Remove(entity);
-  } else if constexpr (std::is_same_v<T, DmgComponent>) {
-    dmgs.Remove(entity);
-  } else if constexpr (std::is_same_v<T, GameStateComponent>) {
-    stateValues.Remove(entity);
-  } else if constexpr (std::is_same_v<T, WeaponComponent>) {
-    weapons.Remove(entity);
-  }
-}
-
-template <typename T> T *Get(Entity entity) {
-  if constexpr (std::is_same_v<T, PositionComponent>) {
-    return positions.Get(entity);
-  } else if constexpr (std::is_same_v<T, VelocityComponent>) {
-    return velocities.Get(entity);
-  } else if constexpr (std::is_same_v<T, ColliderComponent>) {
-    return colliders.Get(entity);
-  } else if constexpr (std::is_same_v<T, TextComponent>) {
-    return texts.Get(entity);
-  } else if constexpr (std::is_same_v<T, RenderComponent>) {
-    return renders.Get(entity);
-  } else if constexpr (std::is_same_v<T, ForceComponent>) {
-    return forces.Get(entity);
-  } else if constexpr (std::is_same_v<T, UIComponent>) {
-    return widgets.Get(entity);
-  } else if constexpr (std::is_same_v<T, HealthComponent>) {
-    return healths.Get(entity);
-  } else if constexpr (std::is_same_v<T, DmgComponent>) {
-    return dmgs.Get(entity);
-  } else if constexpr (std::is_same_v<T, GameStateComponent>) {
-    return stateValues.Get(entity);
-  } else if constexpr (std::is_same_v<T, WeaponComponent>) {
-    return weapons.Get(entity);
+  template <typename T> void Remove(Entity entity) {
+    if constexpr (std::is_same_v<T, PositionComponent>) {
+      positions.Remove(entity);
+    } else if constexpr (std::is_same_v<T, VelocityComponent>) {
+      velocities.Remove(entity);
+    } else if constexpr (std::is_same_v<T, ColliderComponent>) {
+      colliders.Remove(entity);
+    } else if constexpr (std::is_same_v<T, TextComponent>) {
+      texts.Remove(entity);
+    } else if constexpr (std::is_same_v<T, RenderComponent>) {
+      renders.Remove(entity);
+    } else if constexpr (std::is_same_v<T, ForceComponent>) {
+      forces.Remove(entity);
+    } else if constexpr (std::is_same_v<T, UIComponent>) {
+      widgets.Remove(entity);
+    } else if constexpr (std::is_same_v<T, HealthComponent>) {
+      healths.Remove(entity);
+    } else if constexpr (std::is_same_v<T, DmgComponent>) {
+      dmgs.Remove(entity);
+    } else if constexpr (std::is_same_v<T, GameStateComponent>) {
+      stateValues.Remove(entity);
+    } else if constexpr (std::is_same_v<T, WeaponComponent>) {
+      weapons.Remove(entity);
+    }
   }
 
-  return nullptr;
-}
+  template <typename T> T *Get(Entity entity) {
+    if constexpr (std::is_same_v<T, PositionComponent>) {
+      return positions.Get(entity);
+    } else if constexpr (std::is_same_v<T, VelocityComponent>) {
+      return velocities.Get(entity);
+    } else if constexpr (std::is_same_v<T, ColliderComponent>) {
+      return colliders.Get(entity);
+    } else if constexpr (std::is_same_v<T, TextComponent>) {
+      return texts.Get(entity);
+    } else if constexpr (std::is_same_v<T, RenderComponent>) {
+      return renders.Get(entity);
+    } else if constexpr (std::is_same_v<T, ForceComponent>) {
+      return forces.Get(entity);
+    } else if constexpr (std::is_same_v<T, UIComponent>) {
+      return widgets.Get(entity);
+    } else if constexpr (std::is_same_v<T, HealthComponent>) {
+      return healths.Get(entity);
+    } else if constexpr (std::is_same_v<T, DmgComponent>) {
+      return dmgs.Get(entity);
+    } else if constexpr (std::is_same_v<T, GameStateComponent>) {
+      return stateValues.Get(entity);
+    } else if constexpr (std::is_same_v<T, WeaponComponent>) {
+      return weapons.Get(entity);
+    }
 
-template <typename... C> void RegisterComponentGroup() {
-  std::bitset<MAX_COMPONENTS> bitset;
-  /// Get bitset from list of ClassNames
-  ((bitset |= s_typeToBitSetMap[std::type_index(typeid(C))]), ...);
+    return nullptr;
+  }
 
-  // TODO: do not know yet...
-}
+private:
+  std::vector<Entity> entities;
 
-template <typename... C, typename Func> void ForEach(Func system) {
-  std::bitset<MAX_COMPONENTS> targetBitSet;
-  /// Get bitset from list of ClassNames
-  ((targetBitSet |= s_typeToBitSetMap[std::type_index(typeid(C))]), ...);
+  SparseSet<PositionComponent> positions;
+  SparseSet<VelocityComponent> velocities;
+  SparseSet<ColliderComponent> colliders;
+  SparseSet<TextComponent> texts;
+  SparseSet<ForceComponent> forces;
+  SparseSet<RenderComponent> renders;
+  SparseSet<UIComponent> widgets;
+  SparseSet<HealthComponent> healths;
+  SparseSet<DmgComponent> dmgs;
+  SparseSet<GameStateComponent> stateValues;
+  SparseSet<WeaponComponent> weapons;
 
-  // for (const auto &[mask, sparseset] : groups) {
-  //   if ((mask & targetBitSet) == targetBitSet) {
-  //     // DO STUFF...
-  //   }
-  // }
-}
+  void CleanupEntity(Entity entity);
+
+  bool m_renders_sorted;
+};
+
+// template <typename... C> void RegisterComponentGroup() {
+//   std::bitset<MAX_COMPONENTS> bitset;
+//   /// Get bitset from list of ClassNames
+//   ((bitset |= s_typeToBitSetMap[std::type_index(typeid(C))]), ...);
+//
+//   // TODO: do not know yet...
+// }
+//
+// template <typename... C, typename Func> void ForEach(Func system) {
+//   std::bitset<MAX_COMPONENTS> targetBitSet;
+//   /// Get bitset from list of ClassNames
+//   ((targetBitSet |= s_typeToBitSetMap[std::type_index(typeid(C))]), ...);
+//
+//   // for (const auto &[mask, sparseset] : groups) {
+//   //   if ((mask & targetBitSet) == targetBitSet) {
+//   //     // DO STUFF...
+//   //   }
+//   // }
+// }
 
 } // namespace ECS
 

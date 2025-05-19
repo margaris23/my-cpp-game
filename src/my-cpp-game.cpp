@@ -1,9 +1,7 @@
-#include "ecs.hpp"
 #include "raylib.h"
 #include "scenes.hpp"
 #include <iostream>
 #include <ostream>
-#include <vector>
 
 #if defined(PLATFORM_WEB)
 #include <emscripten/emscripten.h>
@@ -32,7 +30,6 @@ int main(void) {
 #else
   SetTargetFPS(60);
 
-  ECS::Init();
   LoadScene(Scene::INTRO);
 
   // Main game loop

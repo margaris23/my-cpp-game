@@ -10,6 +10,8 @@ static struct MenuState {
   ECS::Entity selected;
 } s_State;
 
+static std::unique_ptr<ECS::Registry> s_Registry;
+
 static ECS::Entity s_NewGameBtn;
 static ECS::Entity s_SettingsBtn;
 static ECS::Entity s_HelpBtn;
@@ -25,38 +27,41 @@ void LoadMenu() {
   float screen_cw = GetScreenWidth() / 2.f;
   float screen_ch = GetScreenHeight() / 2.f;
 
-  s_SelectedBtn = ECS::CreateEntity();
+  s_Registry = std::make_unique<ECS::Registry>();
+
+  s_SelectedBtn = s_Registry->CreateEntity();
 
   int textWidth = MeasureText("New Game", 20);
   float padding = 10.f;
-  ECS::Add<ECS::PositionComponent>(s_SelectedBtn, H_CenterText("New Game") - padding,
-                                   100.f - padding);
+  s_Registry->Add<ECS::PositionComponent>(
+      s_SelectedBtn, H_CenterText("New Game") - padding, 100.f - padding);
   // Rectangle { width, height }
-  ECS::Add<ECS::RenderComponent>(s_SelectedBtn, ECS::LAYER::GROUND, ECS::Shape::RECTANGLE, BLACK,
-                                 textWidth + 2.f * padding, 20.f + 2 * padding);
+  s_Registry->Add<ECS::RenderComponent>(s_SelectedBtn, ECS::LAYER::GROUND,
+                                        ECS::Shape::RECTANGLE, BLACK,
+                                        textWidth + 2.f * padding, 20.f + 2 * padding);
 
-  s_NewGameBtn = ECS::CreateEntity();
-  ECS::Add<ECS::PositionComponent>(s_NewGameBtn, H_CenterText("New Game"), 100.f);
-  ECS::Add<ECS::TextComponent>(s_NewGameBtn, "New Game");
+  s_NewGameBtn = s_Registry->CreateEntity();
+  s_Registry->Add<ECS::PositionComponent>(s_NewGameBtn, H_CenterText("New Game"), 100.f);
+  s_Registry->Add<ECS::TextComponent>(s_NewGameBtn, "New Game");
 
-  s_SettingsBtn = ECS::CreateEntity();
-  ECS::Add<ECS::PositionComponent>(s_SettingsBtn, H_CenterText("Settings"), 150.f);
-  ECS::Add<ECS::TextComponent>(s_SettingsBtn, "Settings");
+  s_SettingsBtn = s_Registry->CreateEntity();
+  s_Registry->Add<ECS::PositionComponent>(s_SettingsBtn, H_CenterText("Settings"), 150.f);
+  s_Registry->Add<ECS::TextComponent>(s_SettingsBtn, "Settings");
 
-  s_HelpBtn = ECS::CreateEntity();
-  ECS::Add<ECS::PositionComponent>(s_HelpBtn, H_CenterText("Help"), 200.f);
-  ECS::Add<ECS::TextComponent>(s_HelpBtn, "Help");
+  s_HelpBtn = s_Registry->CreateEntity();
+  s_Registry->Add<ECS::PositionComponent>(s_HelpBtn, H_CenterText("Help"), 200.f);
+  s_Registry->Add<ECS::TextComponent>(s_HelpBtn, "Help");
 
-  s_ExitBtn = ECS::CreateEntity();
-  ECS::Add<ECS::PositionComponent>(s_ExitBtn, H_CenterText("Exit"), 250.f);
-  ECS::Add<ECS::TextComponent>(s_ExitBtn, "Exit");
+  s_ExitBtn = s_Registry->CreateEntity();
+  s_Registry->Add<ECS::PositionComponent>(s_ExitBtn, H_CenterText("Exit"), 250.f);
+  s_Registry->Add<ECS::TextComponent>(s_ExitBtn, "Exit");
 
   // UPDATE MENU STATE
   s_State.selected = 0;
 }
 
 void UpdateMenu(float delta) {
-  ECS::PositionSystem();
+  s_Registry->PositionSystem();
 
   // Handle UI here ... for now
   int mod = 0;
@@ -77,7 +82,7 @@ void UpdateMenu(float delta) {
   // Update Selected Btn Position Component
   s_State.selected = (s_State.selected + mod) % (s_ExitBtn - s_NewGameBtn + 1);
 
-  auto selectedBtnComponent = ECS::Get<ECS::PositionComponent>(s_SelectedBtn);
+  auto selectedBtnComponent = s_Registry->Get<ECS::PositionComponent>(s_SelectedBtn);
   if (selectedBtnComponent) {
     /* TODO: calculate width somehow */
     selectedBtnComponent->m_value.x = H_CenterText("           ") - 10.f;
@@ -86,17 +91,13 @@ void UpdateMenu(float delta) {
 }
 
 void DrawMenu() {
-  ECS::UISystem();
-  ECS::RenderSystem();
+  s_Registry->UISystem();
+  s_Registry->RenderSystem();
 }
 
 void UnloadMenu() {
   s_Event = SceneEvent::NONE;
-  ECS::DeleteEntity(s_NewGameBtn);
-  ECS::DeleteEntity(s_SettingsBtn);
-  ECS::DeleteEntity(s_HelpBtn);
-  ECS::DeleteEntity(s_ExitBtn);
-  ECS::DeleteEntity(s_SelectedBtn);
+  s_Registry.reset();
 }
 
 SceneEvent OnMenuEvent() { return s_Event; }

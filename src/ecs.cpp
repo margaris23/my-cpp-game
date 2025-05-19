@@ -8,34 +8,32 @@
 
 namespace ECS {
 
-std::unordered_map<std::type_index, std::bitset<MAX_COMPONENTS>> s_typeToBitSetMap;
-
-std::vector<Entity> entities;
-// SparseSet::SparseSet<PositionComponent> positions;
-// SparseSet::SparseSet<VelocityComponent> velocities;
-// SparseSet::SparseSet<TextComponent> texts;
+// std::unordered_map<std::type_index, std::bitset<MAX_COMPONENTS>> s_typeToBitSetMap;
 
 namespace {
 size_t entityCounter = 0;
 }
 
-Entity CreateEntity() {
+Registry::~Registry() {
+  for (auto it = entities.begin(); it != entities.end();) {
+    CleanupEntity(*it);
+    it = entities.erase(it);
+  }
+}
+
+Entity Registry::CreateEntity() {
   size_t index = entityCounter++;
   entities.push_back(index);
   return index;
 }
 
-void DeleteEntity(Entity entity) {
-  // fmt::print("\tRemoving Entity {} ... ", entity);
-  entities.erase(std::remove(entities.begin(), entities.end(), entity));
-  // fmt::println(" #entities left: {}", entities.size());
-
+void Registry::CleanupEntity(Entity entity) {
   Remove<PositionComponent>(entity);
   Remove<VelocityComponent>(entity);
   Remove<ColliderComponent>(entity);
   Remove<TextComponent>(entity);
   Remove<RenderComponent>(entity);
-  renders_sorted = false;
+  m_renders_sorted = false;
   Remove<ForceComponent>(entity);
   Remove<UIComponent>(entity);
   Remove<HealthComponent>(entity);
@@ -45,7 +43,13 @@ void DeleteEntity(Entity entity) {
   // add more ...
 }
 
-void Init() {
+void Registry::DeleteEntity(Entity entity) {
+  const auto &it = std::remove(entities.begin(), entities.end(), entity);
+  entities.pop_back();
+  CleanupEntity(entity);
+}
+
+void Registry::Init() {
   // s_typeToBitSetMap[std::type_index(typeid(TransformComponent))] = 1 << 0;
   // s_typeToBitSetMap[std::type_index(typeid(RenderComponent))] = 1 << 1;
   // s_typeToBitSetMap[std::type_index(typeid(CollisionComponent))] = 1 << 2;
@@ -57,15 +61,15 @@ struct {
   }
 } compareLayer;
 
-void RenderSystem() {
-  if (!renders_sorted) {
+void Registry::RenderSystem() {
+  if (!m_renders_sorted) {
     // Sort by Layer
     std::sort(renders.dense.begin(), renders.dense.end(), compareLayer);
     // Update sparse indexing
     for (int i = 0; i < renders.dense.size(); i++) {
       renders.sparse[renders.dense[i].m_entity] = i;
     }
-    renders_sorted = true;
+    m_renders_sorted = true;
   }
 
   // SHAPES
@@ -96,7 +100,7 @@ void RenderSystem() {
   }
 }
 
-void PositionSystem() {
+void Registry::PositionSystem() {
   float screen_width = GetScreenWidth();
   float screen_height = GetScreenHeight();
 
@@ -155,7 +159,7 @@ bool HandleCollision(ColliderComponent &colA, ColliderComponent &colB,
   return false;
 }
 
-void CollisionDetectionSystem() {
+void Registry::CollisionDetectionSystem() {
   const auto &positionComponents = positions.dense;
   auto &colliderComps = colliders.dense;
 
@@ -189,7 +193,7 @@ void CollisionDetectionSystem() {
   }
 }
 
-void CollisionResolutionSystem() {
+void Registry::CollisionResolutionSystem() {
   for (auto &collider : colliders.dense) {
     if (collider.m_collided_with.has_value()) {
       auto health = healths.Get(collider.m_entity);
@@ -212,7 +216,7 @@ void CollisionResolutionSystem() {
   }
 }
 
-void UISystem() {
+void Registry::UISystem() {
   for (auto &widget : widgets.dense) {
     auto widgetPos = positions.Get(widget.m_entity);
 
@@ -244,6 +248,6 @@ void UISystem() {
   }
 }
 
-void ResetSystem() { forces.Reset(); }
+void Registry::ResetSystem() { forces.Reset(); }
 
 } // namespace ECS
