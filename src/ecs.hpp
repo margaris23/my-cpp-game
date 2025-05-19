@@ -29,7 +29,10 @@ using Entity = size_t;
 enum class Shape {
   RECTANGLE,
   CIRCLE,
-  ELLIPSE, // Only for RenderComponents
+
+  // Only for RenderComponents
+  RECTANGLE_SOLID,
+  ELLIPSE,
 };
 enum class UIElement {
   TEXT,
@@ -118,11 +121,9 @@ struct RenderComponent {
   Shape m_shape;
   LAYER m_priority; // for layering
   RenderComponent(LAYER priority, Shape shape, Color color, float width, float height)
-      : m_priority(priority), m_color(color), m_dimensions({width, height}),
-        m_shape(shape) {}
+      : m_priority(priority), m_color(color), m_dimensions({width, height}), m_shape(shape) {}
   RenderComponent(LAYER priority, Shape shape, Color color, float radius)
-      : m_priority(priority), m_color(color), m_dimensions({radius, radius}),
-        m_shape(shape) {}
+      : m_priority(priority), m_color(color), m_dimensions({radius, radius}), m_shape(shape) {}
   ~RenderComponent() = default;
   RenderComponent(const RenderComponent &other) = delete;
   RenderComponent(RenderComponent &&other) noexcept = default;

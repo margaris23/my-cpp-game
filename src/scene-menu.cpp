@@ -8,7 +8,10 @@ static SceneEvent s_Event = SceneEvent::NONE;
 // TODO: change to GameStateComponent when impl
 static struct MenuState {
   ECS::Entity selected;
+  bool unloaded;
 } s_State;
+
+constexpr static float PADDING = 10.f;
 
 static std::unique_ptr<ECS::Registry> s_Registry;
 
@@ -30,15 +33,10 @@ void LoadMenu() {
   s_Registry = std::make_unique<ECS::Registry>();
 
   s_SelectedBtn = s_Registry->CreateEntity();
-
-  int textWidth = MeasureText("New Game", 20);
-  float padding = 10.f;
-  s_Registry->Add<ECS::PositionComponent>(
-      s_SelectedBtn, H_CenterText("New Game") - padding, 100.f - padding);
-  // Rectangle { width, height }
-  s_Registry->Add<ECS::RenderComponent>(s_SelectedBtn, ECS::LAYER::GROUND,
-                                        ECS::Shape::RECTANGLE, BLACK,
-                                        textWidth + 2.f * padding, 20.f + 2 * padding);
+  s_Registry->Add<ECS::PositionComponent>(s_SelectedBtn, screen_cw - 47.5f - PADDING,
+                                          100.f - PADDING);
+  s_Registry->Add<ECS::RenderComponent>(s_SelectedBtn, ECS::LAYER::GROUND, ECS::Shape::RECTANGLE,
+                                        BLACK, 95.f + PADDING, 20.f + 2.f * PADDING);
 
   s_NewGameBtn = s_Registry->CreateEntity();
   s_Registry->Add<ECS::PositionComponent>(s_NewGameBtn, H_CenterText("New Game"), 100.f);
@@ -58,6 +56,7 @@ void LoadMenu() {
 
   // UPDATE MENU STATE
   s_State.selected = 0;
+  s_State.unloaded = false;
 }
 
 void UpdateMenu(float delta) {
@@ -65,7 +64,9 @@ void UpdateMenu(float delta) {
 
   // Handle UI here ... for now
   int mod = 0;
-  if (IsKeyPressed(KEY_DOWN)) {
+  if (IsKeyPressed(KEY_ESCAPE)) {
+    s_Event = SceneEvent::EXIT;
+  } else if (IsKeyPressed(KEY_DOWN)) {
     mod = 1;
   } else if (IsKeyPressed(KEY_UP)) {
     mod = -1;
@@ -98,6 +99,9 @@ void DrawMenu() {
 void UnloadMenu() {
   s_Event = SceneEvent::NONE;
   s_Registry.reset();
+  s_State.unloaded = true;
 }
+
+bool IsMenuUnloaded() { return s_State.unloaded; }
 
 SceneEvent OnMenuEvent() { return s_Event; }

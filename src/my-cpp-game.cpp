@@ -19,6 +19,7 @@ static void UnloadCurrentScene();
 
 Scene g_currentScene = Scene::NONE;
 static bool s_AppShouldExit = false;
+static bool s_OverlayMenu = false;
 
 int main(void) {
   InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "My Game");
@@ -130,6 +131,9 @@ static void UpdateCurrentScene(float delta) {
     break;
   case Scene::GAME:
     UpdateGame(delta);
+    if (s_OverlayMenu) {
+      UpdateMenu(delta);
+    }
     break;
   default:
     break;
@@ -146,6 +150,9 @@ static void DrawCurrentScene() {
     break;
   case Scene::GAME:
     DrawGame();
+    if (s_OverlayMenu) {
+      DrawMenu();
+    }
     break;
   default:
     break;
@@ -153,6 +160,19 @@ static void DrawCurrentScene() {
 }
 
 static void HandleSceneEvent() {
+  if (s_OverlayMenu) {
+    SceneEvent event = OnMenuEvent();
+    if (event == SceneEvent::EXIT) {
+      UnloadMenu();
+      s_OverlayMenu = false;
+
+      if (Scene::GAME == g_currentScene) {
+        SetGameFocus(true);
+      }
+    }
+    return;
+  }
+
   switch (g_currentScene) {
   case Scene::INTRO: {
     SceneEvent event = OnIntroEvent();
@@ -172,6 +192,12 @@ static void HandleSceneEvent() {
     SceneEvent event = OnGameEvent();
     if (event == SceneEvent::EXIT) {
       s_AppShouldExit = true;
+    } else if (SceneEvent::PAUSE == event) {
+      if (IsMenuUnloaded()) {
+        LoadMenu();
+        s_OverlayMenu = true;
+        SetGameFocus(false);
+      }
     }
   } break;
   default:

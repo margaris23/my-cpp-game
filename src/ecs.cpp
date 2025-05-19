@@ -14,17 +14,17 @@ namespace {
 size_t entityCounter = 0;
 }
 
+Entity Registry::CreateEntity() {
+  size_t index = entityCounter++;
+  entities.push_back(index);
+  return index;
+}
+
 Registry::~Registry() {
   for (auto it = entities.begin(); it != entities.end();) {
     CleanupEntity(*it);
     it = entities.erase(it);
   }
-}
-
-Entity Registry::CreateEntity() {
-  size_t index = entityCounter++;
-  entities.push_back(index);
-  return index;
 }
 
 void Registry::CleanupEntity(Entity entity) {
@@ -54,52 +54,6 @@ void Registry::Init() {
   // s_typeToBitSetMap[std::type_index(typeid(RenderComponent))] = 1 << 1;
   // s_typeToBitSetMap[std::type_index(typeid(CollisionComponent))] = 1 << 2;
 }
-
-struct {
-  bool operator()(const RenderComponent &lhs, const RenderComponent &rhs) {
-    return lhs.m_priority < rhs.m_priority;
-  }
-} compareLayer;
-
-void Registry::RenderSystem() {
-  if (!m_renders_sorted) {
-    // Sort by Layer
-    std::sort(renders.dense.begin(), renders.dense.end(), compareLayer);
-    // Update sparse indexing
-    for (int i = 0; i < renders.dense.size(); i++) {
-      renders.sparse[renders.dense[i].m_entity] = i;
-    }
-    m_renders_sorted = true;
-  }
-
-  // SHAPES
-  for (auto &render : renders.dense) {
-    const auto pos = positions.Get(render.m_entity);
-    if (render.IsVisible()) {
-      if (Shape::RECTANGLE == render.m_shape) {
-        DrawRectangleLines(pos->m_value.x, pos->m_value.y, render.m_dimensions.x,
-                           render.m_dimensions.y, render.m_color);
-        // DrawRectangle(pos->m_value.x + 1.f, pos->m_value.y + 1.f,
-        //               render.m_dimensions.x - 2.f, render.m_dimensions.y - 2.f,
-        //               RAYWHITE);
-      } else if (Shape::ELLIPSE == render.m_shape) {
-        DrawEllipseLines(pos->m_value.x, pos->m_value.y, render.m_dimensions.x,
-                         render.m_dimensions.y, render.m_color);
-      } else if (Shape::CIRCLE == render.m_shape) {
-        DrawCircle(pos->m_value.x, pos->m_value.y, render.m_dimensions.x, render.m_color);
-        // DrawCircle(pos->m_value.x, pos->m_value.y, 10.f, render.m_color);
-      }
-      // TODO: add more...
-    }
-  }
-
-  // TEXTS
-  for (const auto &text : texts.dense) {
-    const auto pos = positions.Get(text.m_entity);
-    DrawText(text.m_value.c_str(), pos->m_value.x, pos->m_value.y, 20, text.m_color);
-  }
-}
-
 void Registry::PositionSystem() {
   float screen_width = GetScreenWidth();
   float screen_height = GetScreenHeight();
@@ -146,9 +100,8 @@ bool HandleCollision(ColliderComponent &colA, ColliderComponent &colB,
                      const PositionComponent *posA, const PositionComponent *posB) {
   const auto &dimA = colA.m_dimensions;
 
-  bool collides =
-      CheckCollisionCircleRec(posB->m_value, colB.m_dimensions.x,
-                              {posA->m_value.x, posA->m_value.y, dimA.x, dimA.y});
+  bool collides = CheckCollisionCircleRec(posB->m_value, colB.m_dimensions.x,
+                                          {posA->m_value.x, posA->m_value.y, dimA.x, dimA.y});
 
   if (collides) {
     colA.m_collided_with = colB.m_entity;
@@ -234,8 +187,7 @@ void Registry::UISystem() {
     } else if (UIElement::BAR == widget.m_type) {
       const auto state = stateValues.Get(widget.m_entity);
       if (state) {
-        DrawRectangle(widgetPos->m_value.x, widgetPos->m_value.y, state->m_value * 10, 20,
-                      BLACK);
+        DrawRectangle(widgetPos->m_value.x, widgetPos->m_value.y, state->m_value * 10, 20, BLACK);
       }
     }
     // else if (UIElement::TEXT == widget.m_type) {
@@ -245,6 +197,54 @@ void Registry::UISystem() {
     //     BLACK);
     //   }
     // }
+  }
+}
+
+struct {
+  bool operator()(const RenderComponent &lhs, const RenderComponent &rhs) {
+    return lhs.m_priority < rhs.m_priority;
+  }
+} compareLayer;
+
+void Registry::RenderSystem() {
+  if (!m_renders_sorted) {
+    // Sort by Layer
+    std::sort(renders.dense.begin(), renders.dense.end(), compareLayer);
+    // Update sparse indexing
+    for (int i = 0; i < renders.dense.size(); i++) {
+      renders.sparse[renders.dense[i].m_entity] = i;
+    }
+    m_renders_sorted = true;
+  }
+
+  // SHAPES
+  for (auto &render : renders.dense) {
+    const auto pos = positions.Get(render.m_entity);
+    if (render.IsVisible()) {
+      if (Shape::RECTANGLE == render.m_shape) {
+        DrawRectangleLines(pos->m_value.x, pos->m_value.y, render.m_dimensions.x,
+                           render.m_dimensions.y, render.m_color);
+        // DrawRectangle(pos->m_value.x + 1.f, pos->m_value.y + 1.f,
+        //               render.m_dimensions.x - 2.f, render.m_dimensions.y - 2.f,
+        //               RAYWHITE);
+      } else if (Shape::ELLIPSE == render.m_shape) {
+        DrawEllipseLines(pos->m_value.x, pos->m_value.y, render.m_dimensions.x,
+                         render.m_dimensions.y, render.m_color);
+      } else if (Shape::CIRCLE == render.m_shape) {
+        DrawCircle(pos->m_value.x, pos->m_value.y, render.m_dimensions.x, render.m_color);
+        // DrawCircle(pos->m_value.x, pos->m_value.y, 10.f, render.m_color);
+      } else if (Shape::RECTANGLE_SOLID == render.m_shape) {
+        DrawRectangle(pos->m_value.x, pos->m_value.y, render.m_dimensions.x, render.m_dimensions.y,
+                      render.m_color);
+      }
+      // TODO: add more...
+    }
+  }
+
+  // TEXTS
+  for (const auto &text : texts.dense) {
+    const auto pos = positions.Get(text.m_entity);
+    DrawText(text.m_value.c_str(), pos->m_value.x, pos->m_value.y, 20, text.m_color);
   }
 }
 

@@ -29,11 +29,13 @@ void UpdateMenu(float delta);
 void DrawMenu();
 void UnloadMenu();
 SceneEvent OnMenuEvent();
+bool IsMenuUnloaded();
 
 void LoadGame();
 void UpdateGame(float delta);
 void DrawGame();
 void UnloadGame();
 SceneEvent OnGameEvent();
+void SetGameFocus(bool focus);
 
 #endif

@@ -26,6 +26,7 @@ constexpr static float WEAPON_DMG = 1.f;
 constexpr static float WEAPON_MAX_DISTANCE = 60.f;
 
 static SceneEvent s_Event = SceneEvent::NONE;
+static bool s_IsFocused = false;
 
 static std::unique_ptr<ECS::Registry> s_Registry;
 
@@ -34,7 +35,7 @@ static std::random_device rd;
 static std::mt19937 gen(rd());
 
 // STATE
-enum class GameState { PLAY, PAUSE, WIN, LOST };
+enum class GameState { PLAY, PAUSE, WON, LOST };
 static bool s_isFiring = false;
 static float s_firingDuration = 0.f;
 static GameState s_state = GameState::PLAY;
@@ -49,6 +50,7 @@ static ECS::Entity s_coresCount;
 static std::vector<ECS::Entity> s_meteors;
 static std::vector<ECS::Entity> s_cores;
 
+constexpr static size_t FRAME_MAX_COUNTER = 3600;
 static size_t s_frame = 0;
 
 void LoadGame() {
@@ -145,83 +147,91 @@ void LoadGame() {
   s_Registry->Add<ECS::DmgComponent>(s_miningBeam, WEAPON_DMG);
 
   fmt::println("GAME LOADED!");
+  s_IsFocused = true;
 }
 
 void UpdateGame(float delta) {
-  ++s_frame;
-
-  if (IsKeyPressed(KEY_ESCAPE)) {
-    s_Event = SceneEvent::EXIT;
-    // s_state = GameState::PAUSE == s_state ? GameState::PLAY : GameState::PAUSE;
-    return;
+  // check if round is won or lost
+  if (s_cores.size() == 0) {
+    s_state = GameState::WON;
+  } else {
+    auto lives = s_Registry->Get<ECS::GameStateComponent>(s_spaceshipLives);
+    if (lives->m_value == 0) {
+      s_state = GameState::LOST;
+    }
   }
 
-  if (GameState::PLAY != s_state) {
-    // TODO: implement menu/overlay handling
+  // HANDLE INPUT only when in FOCUS
+  if (s_IsFocused) {
+    if (IsKeyPressed(KEY_ESCAPE)) {
+      // s_Event = SceneEvent::EXIT;
+      s_state = GameState::PAUSE;
+      s_Event = SceneEvent::PAUSE;
+      return;
+    }
 
-    // 1. continue
-    // 2. settings
-    // 3. exit
-    return;
-  }
+    // TODO: implement a force accumulator
+    auto force = s_Registry->Get<ECS::ForceComponent>(s_spaceShip);
+    force->m_value.x = 0;
+    force->m_value.y = 0;
 
-  // INPUT Testing
-  // TODO: implement a force accumulator
-  auto force = s_Registry->Get<ECS::ForceComponent>(s_spaceShip);
-  force->m_value.x = 0;
-  force->m_value.y = 0;
+    if (IsKeyDown(KEY_RIGHT)) {
+      force->m_value.x = 1.f;
+    }
+    if (IsKeyDown(KEY_LEFT)) {
+      force->m_value.x = -1.f;
+    }
+    if (IsKeyDown(KEY_UP)) {
+      force->m_value.y = -1.f;
+    }
+    if (IsKeyDown(KEY_DOWN)) {
+      force->m_value.y = 1.f;
+    }
+    force->m_value = Vector2Normalize(force->m_value);
+    force->m_value.x *= 5.f;
+    force->m_value.y *= 5.f;
 
-  if (IsKeyDown(KEY_RIGHT)) {
-    force->m_value.x = 1.f;
-  }
-  if (IsKeyDown(KEY_LEFT)) {
-    force->m_value.x = -1.f;
-  }
-  if (IsKeyDown(KEY_UP)) {
-    force->m_value.y = -1.f;
-  }
-  if (IsKeyDown(KEY_DOWN)) {
-    force->m_value.y = 1.f;
-  }
-  force->m_value = Vector2Normalize(force->m_value);
-  force->m_value.x *= 5.f;
-  force->m_value.y *= 5.f;
+    // WEAPON FIRING
+    if (IsKeyDown(KEY_SPACE)) {
+      const auto weapon = s_Registry->Get<ECS::WeaponComponent>(s_miningBeam);
+      if (!s_isFiring) {
+        s_isFiring = true;
+        s_firingDuration = 0;
+        s_Registry->Add<ECS::ColliderComponent>(s_miningBeam, WEAPON_SIZE, 10.f);
+        s_Registry->Add<ECS::RenderComponent>(s_miningBeam, ECS::LAYER::GROUND,
+                                       ECS::Shape::RECTANGLE, BROWN, WEAPON_SIZE, 10.f);
+      } else {
+        auto beam_collider = s_Registry->Get<ECS::ColliderComponent>(s_miningBeam);
 
-  // WEAPON FIRING
-  if (IsKeyDown(KEY_SPACE)) {
-    const auto weapon = s_Registry->Get<ECS::WeaponComponent>(s_miningBeam);
-    if (!s_isFiring) {
-      s_isFiring = true;
-      s_firingDuration = 0;
-      s_Registry->Add<ECS::ColliderComponent>(s_miningBeam, WEAPON_SIZE, 10.f);
-      s_Registry->Add<ECS::RenderComponent>(s_miningBeam, ECS::LAYER::GROUND,
-                                            ECS::Shape::RECTANGLE, BROWN, WEAPON_SIZE,
-                                            10.f);
-    } else {
-      auto beam_collider = s_Registry->Get<ECS::ColliderComponent>(s_miningBeam);
+        if (beam_collider) {
+          if (!beam_collider->m_collided_with.has_value() && s_firingDuration < 24.f) {
+            ++s_firingDuration;
+          }
 
-      if (beam_collider) {
-        if (!beam_collider->m_collided_with.has_value() && s_firingDuration < 24.f) {
-          ++s_firingDuration;
-        }
+          // Ease(now, start, max_change, duration)
+          float tween =
+              EaseLinearIn(s_firingDuration, 10.f, WEAPON_MAX_DISTANCE - 10.f, 24.f);
+          beam_collider->m_dimensions.y = tween;
 
-        // Ease(now, start, max_change, duration)
-        float tween =
-            EaseLinearIn(s_firingDuration, 10.f, WEAPON_MAX_DISTANCE - 10.f, 24.f);
-        beam_collider->m_dimensions.y = tween;
-
-        auto beam_render = s_Registry->Get<ECS::RenderComponent>(s_miningBeam);
-        if (beam_render) {
-          beam_render->m_dimensions.y = tween;
+          auto beam_render = s_Registry->Get<ECS::RenderComponent>(s_miningBeam);
+          if (beam_render) {
+            beam_render->m_dimensions.y = tween;
+          }
         }
       }
+    } else if (s_isFiring) {
+      s_isFiring = false;
+      s_firingDuration = 0;
+      s_Registry->Remove<ECS::RenderComponent>(s_miningBeam);
+      s_Registry->Remove<ECS::ColliderComponent>(s_miningBeam);
     }
-  } else if (s_isFiring) {
-    s_isFiring = false;
-    s_firingDuration = 0;
-    s_Registry->Remove<ECS::RenderComponent>(s_miningBeam);
-    s_Registry->Remove<ECS::ColliderComponent>(s_miningBeam);
   }
+
+  if (GameState::PAUSE == s_state) {
+    return;
+  }
+
+  s_frame = (s_frame + 1) % FRAME_MAX_COUNTER;
 
   // Reset spaceship in case collider was removed
   if (!s_Registry->Get<ECS::ColliderComponent>(s_spaceShip)) {
@@ -348,6 +358,17 @@ void DrawGame() {
 
   s_Registry->RenderSystem();
 
+  // if (GameState::PLAY != s_state) {
+  //   // TODO: implement menu/overlay handling
+  //   DrawText(TextFormat("%i", s_state), GetScreenWidth() / 2, GetScreenHeight() / 2,
+  //   20,
+  //            BLACK);
+  //
+  //   if (GameState::PAUSE == s_state) {
+  //     s_Event = SceneEvent::PAUSE;
+  //   }
+  // }
+
   // DrawEllipseLines(100.f, 100.f, 20.f, 10.f, BLACK);
 
   // // DEBUG MINING BEAM
@@ -404,6 +425,14 @@ void DrawGame() {
 void UnloadGame() {
   s_Event = SceneEvent::NONE;
   s_Registry.reset();
+}
+
+void SetGameFocus(bool focus) {
+  if (focus) {
+    s_state = GameState::PLAY;
+    s_Event = SceneEvent::NONE;
+  }
+  s_IsFocused = focus;
 }
 
 SceneEvent OnGameEvent() { return s_Event; }
