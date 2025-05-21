@@ -61,6 +61,7 @@ void Registry::PositionSystem() {
     auto weapon = m_weapons.Get(pos.entity);
 
     if (force) {
+      // A = F / M, M == 1
       if (velocity) {
         velocity->value.x += force->value.x;
         velocity->value.y += force->value.y;

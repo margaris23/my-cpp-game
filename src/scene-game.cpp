@@ -12,6 +12,9 @@
 
 constexpr static float METEORS_WINDOW_PADDING = 50.f;
 constexpr static Vector2 SPACESHIP_SIZE{20.f, 10.f}; // TODO: change dimensions
+constexpr static float MAX_PUSH_FORCE = 5.f;
+constexpr static float PUSH_FORCE_STEP = .2f;
+constexpr static float PUSH_FORCE_STEP_HALF = PUSH_FORCE_STEP / 2.f;
 
 static SceneEvent s_Event = SceneEvent::NONE;
 static bool s_IsFocused = false;
@@ -173,24 +176,37 @@ void UpdateGame(float delta) {
     // TODO: implement a force accumulator
     auto force = s_Registry->Get<ForceComponent>(s_spaceShip);
     if (force) {
-      force->value.x = 0;
-      force->value.y = 0;
-
+      // Simulate drag by applying force inc/dec per dt and limiting
       if (IsKeyDown(KEY_RIGHT)) {
-        force->value.x = 1.f;
+        force->value.x += PUSH_FORCE_STEP;
+      } else if (IsKeyDown(KEY_LEFT)) {
+        force->value.x -= PUSH_FORCE_STEP;
+      } else if (force->value.x > PUSH_FORCE_STEP_HALF) {
+        force->value.x -= PUSH_FORCE_STEP;
+      } else if (force->value.x < -PUSH_FORCE_STEP_HALF) {
+        force->value.x += PUSH_FORCE_STEP;
+      } else {
+        force->value.x = 0.f;
       }
-      if (IsKeyDown(KEY_LEFT)) {
-        force->value.x = -1.f;
-      }
+
       if (IsKeyDown(KEY_UP)) {
-        force->value.y = -1.f;
+        force->value.y -= PUSH_FORCE_STEP;
+      } else if (IsKeyDown(KEY_DOWN)) {
+        force->value.y += PUSH_FORCE_STEP;
+      } else if (force->value.y > PUSH_FORCE_STEP_HALF) {
+        force->value.y -= PUSH_FORCE_STEP;
+      } else if (force->value.y < -PUSH_FORCE_STEP_HALF) {
+        force->value.y += PUSH_FORCE_STEP;
+      } else {
+        force->value.y = 0.f;
       }
-      if (IsKeyDown(KEY_DOWN)) {
-        force->value.y = 1.f;
+
+      // Limit and then SetMag
+      if (Vector2Length(force->value) > MAX_PUSH_FORCE) {
+        force->value = Vector2Normalize(force->value);
+        force->value.x *= 5.f;
+        force->value.y *= 5.f;
       }
-      force->value = Vector2Normalize(force->value);
-      force->value.x *= 5.f;
-      force->value.y *= 5.f;
     }
 
     // WEAPON FIRING
