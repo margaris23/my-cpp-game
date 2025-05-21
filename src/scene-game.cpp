@@ -57,8 +57,6 @@ void LoadGame() {
   s_Registry = std::make_unique<ECS::Registry>();
 
   // Randomizers
-  std::uniform_int_distribution<int> num_of_s_meteors(g_Game.meteors.min_meteors,
-                                                      g_Game.meteors.max_meteors);
   std::uniform_real_distribution<float> rnd_x(s_meteors_offset,
                                               GetScreenWidth() - s_meteors_offset);
   std::uniform_real_distribution<float> rnd_y(s_meteors_offset,
@@ -68,7 +66,7 @@ void LoadGame() {
   std::uniform_real_distribution<float> rnd_velocity(-1.f, 1.f);
 
   // Generate Meteors
-  s_meteors.reserve(num_of_s_meteors(gen));
+  s_meteors.reserve(g_Game.meteors.count);
   s_cores.reserve(s_meteors.capacity());
 
   for (int i = 0; i < s_meteors.capacity(); i++) {
@@ -129,8 +127,9 @@ void LoadGame() {
   s_Registry->Add<PositionComponent>(s_score, screen_cw - 10.f, 10.f);
 
   s_coresCount = s_Registry->CreateEntity();
-  s_Registry->Add<GameStateComponent>(s_coresCount, g_Game.cores);
-  s_Registry->Add<TextComponent>(s_coresCount, fmt::format("{} Cores", g_Game.cores), DARKGREEN);
+  s_Registry->Add<GameStateComponent>(s_coresCount, g_Game.total_cores);
+  s_Registry->Add<TextComponent>(s_coresCount, fmt::format("{} Cores", g_Game.total_cores),
+                                 DARKGREEN);
   s_Registry->Add<PositionComponent>(s_coresCount, screen_cw * 1.5f, 10.f);
 
   s_level = s_Registry->CreateEntity();
@@ -150,17 +149,16 @@ void LoadGame() {
 
 void UpdateGame(float delta) {
   // check if round is won or lost
-  if (s_cores.size() == 0) {
+  if (Game::IsGameWon()) {
     s_state = GameState::WON;
     s_Event = SceneEvent::NEXT;
     return;
   } else {
     auto lives = s_Registry->Get<GameStateComponent>(s_spaceshipLives);
-    if (lives) {
-      if (std::visit([](auto &&value) { return value == 0; }, lives->value)) {
-        s_state = GameState::LOST;
-        return;
-      }
+    if (Game::IsGameLost()) {
+      s_state = GameState::LOST;
+      s_Event = SceneEvent::NEXT;
+      return;
     }
   }
 
@@ -255,11 +253,11 @@ void UpdateGame(float delta) {
     const auto &collider = s_Registry->Get<ColliderComponent>(core);
     if (collider && collider->collided_with.has_value()) {
       Game::GatherCore();
-      cores_count->value = g_Game.cores;
+      cores_count->value = g_Game.total_cores;
     }
   }
   auto coresCount_text = s_Registry->Get<TextComponent>(s_coresCount);
-  coresCount_text->value = fmt::format("{} Cores", g_Game.cores);
+  coresCount_text->value = fmt::format("{} Cores", g_Game.total_cores);
 
   // SCORE
   auto score = s_Registry->Get<GameStateComponent>(s_score);
@@ -335,23 +333,19 @@ void UpdateGame(float delta) {
   std::visit([health](auto &value) { Game::DmgSpaceship(value - health->value); }, state->value);
   state->value = g_Game.health;
 
-  // Sync Spaceship health/lives (HealthSystem ???)
-  if (health->value == 0) {
-    auto spaceship_lives = s_Registry->Get<GameStateComponent>(s_spaceshipLives);
-    Game::LoseLife();
-    spaceship_lives->value = g_Game.lives;
+  auto text = s_Registry->Get<TextComponent>(s_spaceshipLives);
+  text->value = fmt::format("{} Lives", g_Game.lives);
 
-    // remove collider so that on next cycle we will reset spaceship
-    s_Registry->Remove<ColliderComponent>(s_spaceShip);
-
-    bool no_lives = std::visit([](auto &&value) { return value == 0; }, spaceship_lives->value);
-    if (no_lives) {
-      s_state = GameState::LOST;
-      // TODO: add LOST TEXT entity
-    }
-    auto text = s_Registry->Get<TextComponent>(s_spaceshipLives);
-    text->value = fmt::format("{} Lives", g_Game.lives);
-  }
+  auto spaceship_lives = s_Registry->Get<GameStateComponent>(s_spaceshipLives);
+  std::visit(
+      [](auto &&value) {
+        if (g_Game.lives != value) {
+          // remove collider so that on next cycle we will reset spaceship
+          s_Registry->Remove<ColliderComponent>(s_spaceShip);
+        }
+      },
+      spaceship_lives->value);
+  spaceship_lives->value = g_Game.lives;
 }
 
 void DrawGame() {
@@ -432,6 +426,8 @@ void DrawGame() {
 }
 
 void UnloadGame() {
+  s_meteors.clear();
+  s_cores.clear();
   s_Event = SceneEvent::NONE;
   s_Registry.reset();
 }

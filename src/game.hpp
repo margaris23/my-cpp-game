@@ -21,7 +21,8 @@ struct Game {
   int level = 1;
 
   // Player ???
-  int cores;
+  int total_cores;
+  int level_cores;
   int score;
   int max_score;
 
@@ -33,6 +34,7 @@ struct Game {
   struct {
     int min_meteors = MIN_METEORS;
     int max_meteors = MAX_METEORS;
+    int count;
     int min_meteor_size = MIN_METEOR_SIZE;
     int max_meteor_size = MAX_METEOR_SIZE;
     float meteor_dmg = METEOR_DMG;
@@ -49,8 +51,8 @@ struct Game {
 };
 
 void InitGame();
+void LoadLevel(int level);
 void NextLevel();
-void LoseLife();
 void MineMeteor();
 void DmgSpaceship(float dmg);
 void ResetSpaceship();

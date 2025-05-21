@@ -15,7 +15,7 @@ using ECS::PositionComponent, ECS::TextComponent, ECS::Entity;
 void LoadIntro() {
   s_Registry = std::make_unique<ECS::Registry>();
 
-  float posX = (float)(GetScreenWidth() - MeasureText("Minoids", 20)) / 2.f;
+  float posX = (float)(GetScreenWidth() - MeasureText("MINOIDS", 20)) / 2.f;
   float posY = (float)GetScreenHeight() / 2.f;
   auto Title = s_Registry->CreateEntity();
   s_Registry->Add<TextComponent>(Title, "Minoids");
