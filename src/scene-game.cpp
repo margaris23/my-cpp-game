@@ -52,21 +52,36 @@ extern Game::Game g_Game;
 void LoadGame() {
   float screen_cw = GetScreenWidth() / 2.f;
   float screen_ch = GetScreenHeight() / 2.f;
-  float s_meteors_offset = Game::MAX_METEOR_SIZE + METEORS_WINDOW_PADDING;
+  float meteors_offset = Game::MAX_METEOR_SIZE + METEORS_WINDOW_PADDING;
 
   s_Registry = std::make_unique<ECS::Registry>();
 
   // Randomizers
-  std::uniform_real_distribution<float> rnd_x(s_meteors_offset,
-                                              GetScreenWidth() - s_meteors_offset);
-  std::uniform_real_distribution<float> rnd_y(s_meteors_offset,
-                                              GetScreenHeight() - s_meteors_offset);
+  std::uniform_real_distribution<float> rnd_x(meteors_offset, GetScreenWidth() - meteors_offset);
+  std::uniform_real_distribution<float> rnd_y(meteors_offset, GetScreenHeight() - meteors_offset);
   std::uniform_real_distribution<float> rnd_size(g_Game.meteors.min_meteor_size,
                                                  g_Game.meteors.max_meteor_size);
   std::uniform_real_distribution<float> rnd_velocity(-1.f, 1.f);
 
+  // Our Hero
+  s_spaceShip = s_Registry->CreateEntity();
+  s_Registry->Add<PositionComponent>(s_spaceShip, screen_cw, screen_ch);
+  s_Registry->Add<RenderComponent>(s_spaceShip, Layer::GROUND, Shape::ELLIPSE, BLACK,
+                                   SPACESHIP_SIZE.x, SPACESHIP_SIZE.y);
+  s_Registry->Add<ColliderComponent>(s_spaceShip, SPACESHIP_SIZE.x, SPACESHIP_SIZE.y);
+  s_Registry->Add<DmgComponent>(s_spaceShip, 0.1f);
+  s_Registry->Add<HealthComponent>(s_spaceShip, g_Game.health);
+  s_Registry->Add<ForceComponent>(s_spaceShip, 0.f, 0.f); // Initialize empty force
+  // Spaceship's Mining Beam
+  s_miningBeam = s_Registry->CreateEntity();
+  s_Registry->Add<PositionComponent>(s_miningBeam, 0.f, 0.f);
+  s_Registry->Add<WeaponComponent>(s_miningBeam, s_spaceShip, Game::WEAPON_MAX_DISTANCE);
+  s_Registry->Add<DmgComponent>(s_miningBeam, Game::WEAPON_DMG);
+
   // Generate Meteors
+  s_meteors = std::vector<Entity>();
   s_meteors.reserve(g_Game.meteors.count);
+  s_cores = std::vector<Entity>();
   s_cores.reserve(s_meteors.capacity());
 
   for (int i = 0; i < s_meteors.capacity(); i++) {
@@ -98,51 +113,36 @@ void LoadGame() {
     s_Registry->Add<DmgComponent>(meteor, Game::METEOR_DMG);
   }
 
-  // Our Hero
-  s_spaceShip = s_Registry->CreateEntity();
-  s_Registry->Add<PositionComponent>(s_spaceShip, screen_cw, screen_ch);
-  s_Registry->Add<RenderComponent>(s_spaceShip, Layer::GROUND, Shape::ELLIPSE, BLACK,
-                                   SPACESHIP_SIZE.x, SPACESHIP_SIZE.y);
-  s_Registry->Add<ColliderComponent>(s_spaceShip, SPACESHIP_SIZE.x, SPACESHIP_SIZE.y);
-  s_Registry->Add<DmgComponent>(s_spaceShip, 0.1f);
-  s_Registry->Add<HealthComponent>(s_spaceShip, g_Game.health);
-  s_Registry->Add<ForceComponent>(s_spaceShip, 0.f, 0.f); // Initialize empty force
-
   // State: Spaceship health (UI Entity)
   s_spaceshipHealth = s_Registry->CreateEntity();
   s_Registry->Add<GameStateComponent>(s_spaceshipHealth, g_Game.health);
   s_Registry->Add<UIComponent>(s_spaceshipHealth, UIElement::BAR);
   s_Registry->Add<PositionComponent>(s_spaceshipHealth, 10.f, 10.f);
-
+  // Spaceship Lives (UI Entity)
   s_spaceshipLives = s_Registry->CreateEntity();
   s_Registry->Add<GameStateComponent>(s_spaceshipLives, g_Game.lives);
   s_Registry->Add<TextComponent>(s_spaceshipLives, fmt::format("{} Lives", g_Game.lives), MAROON);
   s_Registry->Add<PositionComponent>(s_spaceshipLives,
                                      GetScreenWidth() - MeasureText(" Lives", 20) - 20.f, 10.f);
 
-  // Scores
+  // Scores (UI Entity)
   s_score = s_Registry->CreateEntity();
   s_Registry->Add<GameStateComponent>(s_score, g_Game.score);
   s_Registry->Add<TextComponent>(s_score, fmt::format("{}", g_Game.score), BROWN);
   s_Registry->Add<PositionComponent>(s_score, screen_cw - 10.f, 10.f);
 
+  // # Cores
   s_coresCount = s_Registry->CreateEntity();
   s_Registry->Add<GameStateComponent>(s_coresCount, g_Game.total_cores);
   s_Registry->Add<TextComponent>(s_coresCount, fmt::format("{} Cores", g_Game.total_cores),
                                  DARKGREEN);
   s_Registry->Add<PositionComponent>(s_coresCount, screen_cw * 1.5f, 10.f);
 
+  // Level (UI Entity)
   s_level = s_Registry->CreateEntity();
   s_Registry->Add<GameStateComponent>(s_level, g_Game.level);
   s_Registry->Add<TextComponent>(s_level, fmt::format("L {}", g_Game.level), DARKBLUE);
   s_Registry->Add<PositionComponent>(s_level, 140.f, 10.f);
-
-  // Spaceship's Mining Beam
-  // TODO: create before spaceship (order matters when rendering)
-  s_miningBeam = s_Registry->CreateEntity();
-  s_Registry->Add<PositionComponent>(s_miningBeam, 0.f, 0.f);
-  s_Registry->Add<WeaponComponent>(s_miningBeam, s_spaceShip, Game::WEAPON_MAX_DISTANCE);
-  s_Registry->Add<DmgComponent>(s_miningBeam, Game::WEAPON_DMG);
 
   s_IsFocused = true;
 }
