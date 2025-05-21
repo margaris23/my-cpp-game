@@ -40,6 +40,7 @@ static Entity s_spaceShip;
 static Entity s_miningBeam;
 static Entity s_score;
 static Entity s_coresCount;
+static Entity s_level;
 static std::vector<Entity> s_meteors;
 static std::vector<Entity> s_cores;
 
@@ -131,6 +132,11 @@ void LoadGame() {
   s_Registry->Add<GameStateComponent>(s_coresCount, g_Game.cores);
   s_Registry->Add<TextComponent>(s_coresCount, fmt::format("{} Cores", g_Game.cores), DARKGREEN);
   s_Registry->Add<PositionComponent>(s_coresCount, screen_cw * 1.5f, 10.f);
+
+  s_level = s_Registry->CreateEntity();
+  s_Registry->Add<GameStateComponent>(s_level, g_Game.level);
+  s_Registry->Add<TextComponent>(s_level, fmt::format("L {}", g_Game.level), DARKBLUE);
+  s_Registry->Add<PositionComponent>(s_level, 140.f, 10.f);
 
   // Spaceship's Mining Beam
   // TODO: create before spaceship (order matters when rendering)

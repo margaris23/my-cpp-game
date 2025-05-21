@@ -18,7 +18,7 @@ constexpr float WEAPON_DMG = 1.f;
 constexpr float WEAPON_MAX_DISTANCE = 60.f;
 
 struct Game {
-  int level;
+  int level = 1;
 
   // Player ???
   int cores;
