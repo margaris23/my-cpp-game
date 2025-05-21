@@ -1,5 +1,6 @@
 #include "ecs.hpp"
 #include "fmt/core.h"
+#include "game.hpp"
 #include "raylib.h"
 #include "raymath.h"
 #include "reasings.h"
@@ -8,21 +9,8 @@
 #include <random>
 #include <vector>
 
-constexpr static int MIN_METEORS = 3;
-constexpr static int MAX_METEORS = 5;
-constexpr static int MIN_METEOR_SIZE = 20;
-constexpr static int MAX_METEOR_SIZE = 50;
 constexpr static float METEORS_WINDOW_PADDING = 50.f;
-constexpr static float METEOR_DMG = 0.1f;
-constexpr static float METEOR_CORE_SIZE = 10.f;
-constexpr static float METEOR_CORE_HEALTH = 0.1f;
-
 constexpr static Vector2 SPACESHIP_SIZE{20.f, 10.f}; // TODO: change dimensions
-constexpr static float SPACESHIP_INITIAL_HEALTH = 10.f;
-constexpr static float SPACESHIP_INITIAL_LIVES = 3.f;
-constexpr static float WEAPON_SIZE = 10.f;
-constexpr static float WEAPON_DMG = 1.f;
-constexpr static float WEAPON_MAX_DISTANCE = 60.f;
 
 static SceneEvent s_Event = SceneEvent::NONE;
 static bool s_IsFocused = false;

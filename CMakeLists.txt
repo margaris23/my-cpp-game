@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24...3.30)
-project(my-cpp-game)
+project(minoids)
 
 include(FetchContent)
 
@@ -36,7 +36,7 @@ add_executable(${PROJECT_NAME})
 add_subdirectory(src)
 add_compile_options(-g -Wall)
 
-target_link_libraries(my-cpp-game fmt::fmt)
+target_link_libraries(${PROJECT_NAME} fmt::fmt)
 
 set_target_properties(
   ${PROJECT_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY

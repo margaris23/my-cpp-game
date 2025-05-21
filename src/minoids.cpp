@@ -2,6 +2,7 @@
 #include "scenes.hpp"
 #include <iostream>
 #include <ostream>
+#include "game.hpp"
 
 #if defined(PLATFORM_WEB)
 #include <emscripten/emscripten.h>
@@ -31,6 +32,7 @@ int main(void) {
 #else
   SetTargetFPS(60);
 
+  InitGame();
   LoadScene(Scene::INTRO);
 
   // Main game loop
