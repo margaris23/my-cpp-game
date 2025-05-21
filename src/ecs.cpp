@@ -5,6 +5,7 @@
 #include <functional>
 #include <optional>
 #include <string>
+#include <variant>
 
 namespace ECS {
 
@@ -183,7 +184,11 @@ void Registry::UISystem() {
     } else if (UIElement::BAR == widget.type) {
       const auto state = m_stateValues.Get(widget.entity);
       if (state) {
-        DrawRectangle(widgetPos->value.x, widgetPos->value.y, state->value * 10, 20, BLACK);
+        std::visit(
+            [widgetPos](auto &&val) {
+              DrawRectangle(widgetPos->value.x, widgetPos->value.y, val * 10, 20, BLACK);
+            },
+            state->value);
       }
     }
     // else if (UIElement::TEXT == widget.m_type) {

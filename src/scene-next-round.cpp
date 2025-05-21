@@ -1,4 +1,5 @@
 #include "ecs.hpp"
+#include "game.hpp"
 #include "raylib.h"
 #include "scenes.hpp"
 #include <memory>
@@ -27,6 +28,7 @@ void LoadNextRound() {
 void UpdateNextRound(float delta) {
   if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) || IsKeyPressed(KEY_SPACE) ||
       IsKeyPressed(KEY_ENTER)) {
+    Game::NextLevel();
     s_Event = SceneEvent::NEXT;
     return;
   }

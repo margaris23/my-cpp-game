@@ -5,10 +5,11 @@
 #include "sparse-set.hpp"
 #include <cstdint>
 #include <optional>
+#include <string>
 #include <string_view>
 #include <type_traits>
 #include <utility>
-#include <string>
+#include <variant>
 #include <vector>
 
 namespace ECS {
@@ -160,7 +161,7 @@ struct WeaponComponent {
   WeaponComponent &operator=(WeaponComponent &&rhs) noexcept = default;
 };
 
-using GameStateValue = float; // std::variant<float, int>;
+using GameStateValue = std::variant<float, int>;
 
 struct GameStateComponent {
   GameStateValue value;

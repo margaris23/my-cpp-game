@@ -7,6 +7,7 @@
 #include "scenes.hpp"
 #include <algorithm>
 #include <random>
+#include <variant>
 #include <vector>
 
 constexpr static float METEORS_WINDOW_PADDING = 50.f;
@@ -45,20 +46,24 @@ static std::vector<Entity> s_cores;
 constexpr static size_t FRAME_MAX_COUNTER = 3600;
 static size_t s_frame = 0;
 
+extern Game::Game g_Game;
+
 void LoadGame() {
   float screen_cw = GetScreenWidth() / 2.f;
   float screen_ch = GetScreenHeight() / 2.f;
-  float s_meteors_offset = MAX_METEOR_SIZE + METEORS_WINDOW_PADDING;
+  float s_meteors_offset = Game::MAX_METEOR_SIZE + METEORS_WINDOW_PADDING;
 
   s_Registry = std::make_unique<ECS::Registry>();
 
   // Randomizers
-  std::uniform_int_distribution<int> num_of_s_meteors(MIN_METEORS, MAX_METEORS);
+  std::uniform_int_distribution<int> num_of_s_meteors(g_Game.meteors.min_meteors,
+                                                      g_Game.meteors.max_meteors);
   std::uniform_real_distribution<float> rnd_x(s_meteors_offset,
                                               GetScreenWidth() - s_meteors_offset);
   std::uniform_real_distribution<float> rnd_y(s_meteors_offset,
                                               GetScreenHeight() - s_meteors_offset);
-  std::uniform_real_distribution<float> rnd_size(MIN_METEOR_SIZE, MAX_METEOR_SIZE);
+  std::uniform_real_distribution<float> rnd_size(g_Game.meteors.min_meteor_size,
+                                                 g_Game.meteors.max_meteor_size);
   std::uniform_real_distribution<float> rnd_velocity(-1.f, 1.f);
 
   // Generate Meteors
@@ -77,8 +82,9 @@ void LoadGame() {
     Entity core = s_cores.back();
     s_Registry->Add<PositionComponent>(core, posX, posY);
     s_Registry->Add<VelocityComponent>(core, velX, velY);
-    s_Registry->Add<RenderComponent>(core, Layer::SUB, Shape::CIRCLE, DARKGREEN, METEOR_CORE_SIZE);
-    s_Registry->Add<HealthComponent>(core, METEOR_CORE_HEALTH);
+    s_Registry->Add<RenderComponent>(core, Layer::SUB, Shape::CIRCLE, DARKGREEN,
+                                     Game::METEOR_CORE_SIZE);
+    s_Registry->Add<HealthComponent>(core, Game::METEOR_CORE_HEALTH);
     // NO Collider until core revealed
 
     // Main Meteor
@@ -90,7 +96,7 @@ void LoadGame() {
     s_Registry->Add<RenderComponent>(meteor, Layer::GROUND, Shape::CIRCLE, BLACK, radius);
     s_Registry->Add<ColliderComponent>(meteor, radius);
     s_Registry->Add<HealthComponent>(meteor, radius); // bigger means more health
-    s_Registry->Add<DmgComponent>(meteor, METEOR_DMG);
+    s_Registry->Add<DmgComponent>(meteor, Game::METEOR_DMG);
   }
 
   // Our Hero
@@ -100,39 +106,38 @@ void LoadGame() {
                                    SPACESHIP_SIZE.x, SPACESHIP_SIZE.y);
   s_Registry->Add<ColliderComponent>(s_spaceShip, SPACESHIP_SIZE.x, SPACESHIP_SIZE.y);
   s_Registry->Add<DmgComponent>(s_spaceShip, 0.1f);
-  s_Registry->Add<HealthComponent>(s_spaceShip,
-                                   SPACESHIP_INITIAL_HEALTH); // for collisions
-  s_Registry->Add<ForceComponent>(s_spaceShip, 0.f, 0.f);     // Initialize empty force
+  s_Registry->Add<HealthComponent>(s_spaceShip, g_Game.health);
+  s_Registry->Add<ForceComponent>(s_spaceShip, 0.f, 0.f); // Initialize empty force
 
   // State: Spaceship health (UI Entity)
   s_spaceshipHealth = s_Registry->CreateEntity();
-  s_Registry->Add<GameStateComponent>(s_spaceshipHealth, SPACESHIP_INITIAL_HEALTH);
+  s_Registry->Add<GameStateComponent>(s_spaceshipHealth, g_Game.health);
   s_Registry->Add<UIComponent>(s_spaceshipHealth, UIElement::BAR);
   s_Registry->Add<PositionComponent>(s_spaceshipHealth, 10.f, 10.f);
 
   s_spaceshipLives = s_Registry->CreateEntity();
-  s_Registry->Add<GameStateComponent>(s_spaceshipLives, SPACESHIP_INITIAL_LIVES);
-  s_Registry->Add<TextComponent>(s_spaceshipLives, "3 Lives", MAROON);
+  s_Registry->Add<GameStateComponent>(s_spaceshipLives, g_Game.lives);
+  s_Registry->Add<TextComponent>(s_spaceshipLives, fmt::format("{} Lives", g_Game.lives), MAROON);
   s_Registry->Add<PositionComponent>(s_spaceshipLives,
                                      GetScreenWidth() - MeasureText(" Lives", 20) - 20.f, 10.f);
 
   // Scores
   s_score = s_Registry->CreateEntity();
-  s_Registry->Add<GameStateComponent>(s_score, 0.f);
-  s_Registry->Add<TextComponent>(s_score, "0", BROWN);
+  s_Registry->Add<GameStateComponent>(s_score, g_Game.score);
+  s_Registry->Add<TextComponent>(s_score, fmt::format("{}", g_Game.score), BROWN);
   s_Registry->Add<PositionComponent>(s_score, screen_cw - 10.f, 10.f);
 
   s_coresCount = s_Registry->CreateEntity();
-  s_Registry->Add<GameStateComponent>(s_coresCount, 0.f);
-  s_Registry->Add<TextComponent>(s_coresCount, "0 Cores", DARKGREEN);
+  s_Registry->Add<GameStateComponent>(s_coresCount, g_Game.cores);
+  s_Registry->Add<TextComponent>(s_coresCount, fmt::format("{} Cores", g_Game.cores), DARKGREEN);
   s_Registry->Add<PositionComponent>(s_coresCount, screen_cw * 1.5f, 10.f);
 
   // Spaceship's Mining Beam
   // TODO: create before spaceship (order matters when rendering)
   s_miningBeam = s_Registry->CreateEntity();
   s_Registry->Add<PositionComponent>(s_miningBeam, 0.f, 0.f);
-  s_Registry->Add<WeaponComponent>(s_miningBeam, s_spaceShip, WEAPON_MAX_DISTANCE);
-  s_Registry->Add<DmgComponent>(s_miningBeam, WEAPON_DMG);
+  s_Registry->Add<WeaponComponent>(s_miningBeam, s_spaceShip, Game::WEAPON_MAX_DISTANCE);
+  s_Registry->Add<DmgComponent>(s_miningBeam, Game::WEAPON_DMG);
 
   s_IsFocused = true;
 }
@@ -145,9 +150,11 @@ void UpdateGame(float delta) {
     return;
   } else {
     auto lives = s_Registry->Get<GameStateComponent>(s_spaceshipLives);
-    if (lives && lives->value == 0) {
-      s_state = GameState::LOST;
-      return;
+    if (lives) {
+      if (std::visit([](auto &&value) { return value == 0; }, lives->value)) {
+        s_state = GameState::LOST;
+        return;
+      }
     }
   }
 
@@ -188,9 +195,9 @@ void UpdateGame(float delta) {
       if (!s_isFiring) {
         s_isFiring = true;
         s_firingDuration = 0;
-        s_Registry->Add<ColliderComponent>(s_miningBeam, WEAPON_SIZE, 10.f);
+        s_Registry->Add<ColliderComponent>(s_miningBeam, Game::WEAPON_SIZE, 10.f);
         s_Registry->Add<RenderComponent>(s_miningBeam, Layer::GROUND, Shape::RECTANGLE, BROWN,
-                                         WEAPON_SIZE, 10.f);
+                                         Game::WEAPON_SIZE, 10.f);
       } else {
         auto beam_collider = s_Registry->Get<ColliderComponent>(s_miningBeam);
 
@@ -200,7 +207,8 @@ void UpdateGame(float delta) {
           }
 
           // Ease(now, start, max_change, duration)
-          float tween = EaseLinearIn(s_firingDuration, 10.f, WEAPON_MAX_DISTANCE - 10.f, 24.f);
+          float tween =
+              EaseLinearIn(s_firingDuration, 10.f, Game::WEAPON_MAX_DISTANCE - 10.f, 24.f);
           beam_collider->dimensions.y = tween;
 
           auto beam_render = s_Registry->Get<RenderComponent>(s_miningBeam);
@@ -226,7 +234,8 @@ void UpdateGame(float delta) {
   // Reset spaceship in case collider was removed
   if (!s_Registry->Get<ColliderComponent>(s_spaceShip)) {
     auto health = s_Registry->Get<HealthComponent>(s_spaceShip);
-    health->value = SPACESHIP_INITIAL_HEALTH;
+    Game::ResetSpaceship();
+    health->value = g_Game.health;
     s_Registry->Add<ColliderComponent>(s_spaceShip, SPACESHIP_SIZE.x, SPACESHIP_SIZE.y);
   }
 
@@ -239,22 +248,26 @@ void UpdateGame(float delta) {
   for (const auto &core : s_cores) {
     const auto &collider = s_Registry->Get<ColliderComponent>(core);
     if (collider && collider->collided_with.has_value()) {
-      ++cores_count->value;
+      Game::GatherCore();
+      cores_count->value = g_Game.cores;
     }
   }
   auto coresCount_text = s_Registry->Get<TextComponent>(s_coresCount);
-  coresCount_text->value = fmt::format("{} Cores", cores_count->value);
+  coresCount_text->value = fmt::format("{} Cores", g_Game.cores);
+
   // SCORE
   auto score = s_Registry->Get<GameStateComponent>(s_score);
   for (const auto &meteor : s_meteors) {
     const auto &collider = s_Registry->Get<ColliderComponent>(meteor);
     if (collider && collider->collided_with.has_value()) {
       // Let's earn 1 point for every hit for now....
-      ++score->value;
+      Game::MineMeteor();
+      score->value = g_Game.score;
     }
   }
   auto score_text = s_Registry->Get<TextComponent>(s_score);
-  score_text->value = fmt::format("{}", score->value);
+  std::visit([score_text](auto &&value) { score_text->value = fmt::format("{}", value); },
+             score->value);
 
   s_Registry->CollisionResolutionSystem();
 
@@ -297,7 +310,7 @@ void UpdateGame(float delta) {
           core_pos->value.x += 10.f;
           core_pos->value.y += 10.f;
         }
-        s_Registry->Add<ColliderComponent>(core, METEOR_CORE_SIZE);
+        s_Registry->Add<ColliderComponent>(core, Game::METEOR_CORE_SIZE);
       }
       continue;
     }
@@ -313,24 +326,25 @@ void UpdateGame(float delta) {
   // Sync state with components i.e Spaceship.health -> SpaceShipHealth.state
   const auto health = s_Registry->Get<HealthComponent>(s_spaceShip);
   auto state = s_Registry->Get<GameStateComponent>(s_spaceshipHealth);
-  state->value = health->value;
+  std::visit([health](auto &value) { Game::DmgSpaceship(value - health->value); }, state->value);
+  state->value = g_Game.health;
 
   // Sync Spaceship health/lives (HealthSystem ???)
   if (health->value == 0) {
     auto spaceship_lives = s_Registry->Get<GameStateComponent>(s_spaceshipLives);
-    --spaceship_lives->value;
+    Game::LoseLife();
+    spaceship_lives->value = g_Game.lives;
 
     // remove collider so that on next cycle we will reset spaceship
     s_Registry->Remove<ColliderComponent>(s_spaceShip);
 
-    if (spaceship_lives->value == 0) {
+    bool no_lives = std::visit([](auto &&value) { return value == 0; }, spaceship_lives->value);
+    if (no_lives) {
       s_state = GameState::LOST;
-
       // TODO: add LOST TEXT entity
     }
-
     auto text = s_Registry->Get<TextComponent>(s_spaceshipLives);
-    text->value = fmt::format("{} Lives", spaceship_lives->value);
+    text->value = fmt::format("{} Lives", g_Game.lives);
   }
 }
 
