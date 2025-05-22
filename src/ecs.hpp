@@ -1,6 +1,7 @@
 #ifndef ECS_H
 #define ECS_H
 
+#include "fmt/core.h"
 #include "raylib.h"
 #include "sparse-set.hpp"
 #include <cstdint>
@@ -129,6 +130,51 @@ struct RenderComponent {
   }
 };
 
+struct SpriteComponent {
+  Texture2D texture;
+  Layer priority; // for layering
+  Entity entity;
+  bool m_owns_texture;
+
+  explicit SpriteComponent(Layer priority, std::string_view filename) : priority(priority) {
+    texture = LoadTexture(fmt::format(ASSETS_PATH "/{}", filename).data());
+    m_owns_texture = true;
+  }
+
+  ~SpriteComponent() {
+    if (m_owns_texture) {
+      UnloadTexture(texture);
+    }
+  }
+
+  SpriteComponent(const SpriteComponent &other) = delete;
+  SpriteComponent& operator=(const SpriteComponent &other) = delete;
+
+  // safe MOVE Semantics due to Texture
+  SpriteComponent(SpriteComponent &&other) noexcept
+      : texture(other.texture), m_owns_texture(true), priority(std::move(other.priority)),
+        entity(std::move(other.entity)) {
+    other.m_owns_texture = false;
+  }
+
+  SpriteComponent &operator=(SpriteComponent &&rhs) noexcept {
+    if (this != &rhs) {
+      if (m_owns_texture) {
+        UnloadTexture(texture);
+      } else {
+        rhs.m_owns_texture = false;
+        m_owns_texture = true;
+      }
+      texture = rhs.texture;
+      priority = std::move(rhs.priority);
+      entity = std::move(rhs.entity);
+      priority = std::move(rhs.priority);
+    }
+
+    return *this;
+  }
+};
+
 struct HealthComponent {
   float value;
   Entity entity;
@@ -142,6 +188,7 @@ struct HealthComponent {
 struct DmgComponent {
   float value;
   Entity entity;
+
   explicit DmgComponent(float health) : value(health) {}
   ~DmgComponent() = default;
   DmgComponent(const DmgComponent &other) = delete;
@@ -205,6 +252,8 @@ public:
     } else if constexpr (std::is_same_v<T, RenderComponent>) {
       m_renders_sorted = false;
       return m_renders.Add(entity, std::move(component));
+    } else if constexpr (std::is_same_v<T, SpriteComponent>) {
+      return m_sprites.Add(entity, std::move(component));
     } else if constexpr (std::is_same_v<T, ForceComponent>) {
       return m_forces.Add(entity, std::move(component));
     } else if constexpr (std::is_same_v<T, UIComponent>) {
@@ -233,6 +282,8 @@ public:
       m_texts.Remove(entity);
     } else if constexpr (std::is_same_v<T, RenderComponent>) {
       m_renders.Remove(entity);
+    } else if constexpr (std::is_same_v<T, SpriteComponent>) {
+      m_sprites.Remove(entity);
     } else if constexpr (std::is_same_v<T, ForceComponent>) {
       m_forces.Remove(entity);
     } else if constexpr (std::is_same_v<T, UIComponent>) {
@@ -259,6 +310,8 @@ public:
       return m_texts.Get(entity);
     } else if constexpr (std::is_same_v<T, RenderComponent>) {
       return m_renders.Get(entity);
+    } else if constexpr (std::is_same_v<T, SpriteComponent>) {
+      return m_sprites.Get(entity);
     } else if constexpr (std::is_same_v<T, ForceComponent>) {
       return m_forces.Get(entity);
     } else if constexpr (std::is_same_v<T, UIComponent>) {
@@ -286,6 +339,7 @@ private:
   SparseSet<TextComponent> m_texts;
   SparseSet<ForceComponent> m_forces;
   SparseSet<RenderComponent> m_renders;
+  SparseSet<SpriteComponent> m_sprites;
   SparseSet<UIComponent> m_widgets;
   SparseSet<HealthComponent> m_healths;
   SparseSet<DmgComponent> m_dmgs;

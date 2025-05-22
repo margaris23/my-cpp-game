@@ -65,6 +65,7 @@ endif()
 
 # set(raylib_VERBOSE 1)
 target_link_libraries(${PROJECT_NAME} raylib)
+target_compile_definitions(${PROJECT_NAME} PUBLIC ASSETS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/src/resources")
 
 # Web Configurations
 if("${PLATFORM}" STREQUAL "Web")

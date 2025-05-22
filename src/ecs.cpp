@@ -1,5 +1,4 @@
 #include "ecs.hpp"
-#include "fmt/core.h"
 #include "raylib.h"
 #include <algorithm>
 #include <functional>
@@ -31,6 +30,7 @@ void Registry::CleanupEntity(Entity entity) {
   Remove<TextComponent>(entity);
   Remove<RenderComponent>(entity);
   m_renders_sorted = false;
+  Remove<SpriteComponent>(entity);
   Remove<ForceComponent>(entity);
   Remove<UIComponent>(entity);
   Remove<HealthComponent>(entity);
@@ -74,9 +74,10 @@ void Registry::PositionSystem() {
       pos.value.y += velocity->value.y;
     } else if (weapon) {
       const auto shooterPos = m_positions.Get(weapon->shooter);
-      // weapon position: custom offsets for now
-      pos.value.x = shooterPos->value.x - 5.f;
-      pos.value.y = shooterPos->value.y + 8.f;
+      const auto shooterSprite = m_sprites.Get(weapon->shooter);
+      // offsets are due to weapon size - TODO: address this
+      pos.value.x = shooterPos->value.x + shooterSprite->texture.width / 2.f - 5.f;
+      pos.value.y = shooterPos->value.y + shooterSprite->texture.height / 2.f - 8.f;
     }
 
     // ideally, size should be included
@@ -119,13 +120,13 @@ void Registry::CollisionDetectionSystem() {
       auto posA = m_positions.Get(colliderComps[indexA].entity);
       auto posB = m_positions.Get(colliderComps[indexB].entity);
 
-      // TODO: Need to address this later
+      // TODO: (Edge Case) Need to address this later
       if (!posB || !posA) {
         continue;
       }
 
       // Optimizations:
-      // ELLIPSE is expected to be our Spaceship or its MiningBeam (weapon),
+      // RECTANGLE expected to be our Spaceship or its MiningBeam (weapon),
       // Circles are expected to be our Meteors
       // Circles do not expect to collide each other so,
       // Rectangle is expected to collide with only 1 Circle
@@ -217,6 +218,7 @@ void Registry::RenderSystem() {
       m_renders.sparse[m_renders.dense[i].entity] = i;
     }
     m_renders_sorted = true;
+    // TODO: sort sprites
   }
 
   // SHAPES
@@ -242,6 +244,34 @@ void Registry::RenderSystem() {
       // TODO: add more...
     }
   }
+
+  for (auto &sprite : m_sprites.dense) {
+    const auto pos = m_positions.Get(sprite.entity);
+    // Anchor point is center of texture
+    // DrawTexture(sprite.texture, pos->value.x - sprite.texture.width / 2.f,
+    //             pos->value.y - sprite.texture.height / 2.f, WHITE);
+
+    DrawTexture(sprite.texture, pos->value.x, pos->value.y, WHITE);
+    // DrawTextureEx(sprite.texture, {pos->value.x, pos->value.y}, 0, 1.f, WHITE);
+
+    // Rectangle source{0, 0, (float)sprite.texture.width, (float)sprite.texture.height};
+    // Rectangle dest{pos->value.x, pos->value.y, (float)sprite.texture.width,
+    //                (float)sprite.texture.height};
+    // DrawTexturePro(sprite.texture, source, dest,
+    //                {sprite.texture.width / 2.f, sprite.texture.height / 2.f}, 0, WHITE);
+  }
+
+  // DEBUG
+  // for (auto &collider : m_colliders.dense) {
+  //   const auto pos = m_positions.Get(collider.entity);
+  //   if (Shape::CIRCLE == collider.shape) {
+  //     DrawCircleLines(pos->value.x, pos->value.y, collider.dimensions.x, GREEN);
+  //   } else if (Shape::RECTANGLE == collider.shape) {
+  //     DrawRectangleLines(pos->value.x, pos->value.y, collider.dimensions.x,
+  //     collider.dimensions.y,
+  //                        GREEN);
+  //   }
+  // }
 
   // TEXTS
   for (const auto &text : m_texts.dense) {

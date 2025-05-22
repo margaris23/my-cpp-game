@@ -11,7 +11,7 @@
 #include <vector>
 
 constexpr static float METEORS_WINDOW_PADDING = 50.f;
-constexpr static Vector2 SPACESHIP_SIZE{20.f, 10.f}; // TODO: change dimensions
+constexpr static Vector2 SPACESHIP_SIZE{61.f, 29.f}; // matches sprite dimensions
 constexpr static float MAX_PUSH_FORCE = 5.f;
 constexpr static float PUSH_FORCE_STEP = .2f;
 constexpr static float PUSH_FORCE_STEP_HALF = PUSH_FORCE_STEP / 2.f;
@@ -23,8 +23,8 @@ static std::unique_ptr<ECS::Registry> s_Registry;
 
 using ECS::PositionComponent, ECS::RenderComponent, ECS::TextComponent, ECS::VelocityComponent,
     ECS::GameStateComponent, ECS::UIComponent, ECS::ForceComponent, ECS::DmgComponent,
-    ECS::ColliderComponent, ECS::WeaponComponent, ECS::HealthComponent, ECS::UIElement, ECS::Entity,
-    ECS::Layer, ECS::Shape;
+    ECS::ColliderComponent, ECS::WeaponComponent, ECS::HealthComponent, ECS::SpriteComponent,
+    ECS::UIElement, ECS::Entity, ECS::Layer, ECS::Shape;
 
 // ENTROPY
 static std::random_device rd;
@@ -69,12 +69,14 @@ void LoadGame() {
   // Our Hero
   s_spaceShip = s_Registry->CreateEntity();
   s_Registry->Add<PositionComponent>(s_spaceShip, screen_cw, screen_ch);
-  s_Registry->Add<RenderComponent>(s_spaceShip, Layer::GROUND, Shape::ELLIPSE, BLACK,
-                                   SPACESHIP_SIZE.x, SPACESHIP_SIZE.y);
+  // s_Registry->Add<RenderComponent>(s_spaceShip, Layer::GROUND, Shape::ELLIPSE, BLACK,
+  //                                  SPACESHIP_SIZE.x, SPACESHIP_SIZE.y);
+  s_Registry->Add<SpriteComponent>(s_spaceShip, Layer::GROUND, "ufo.png");
   s_Registry->Add<ColliderComponent>(s_spaceShip, SPACESHIP_SIZE.x, SPACESHIP_SIZE.y);
   s_Registry->Add<DmgComponent>(s_spaceShip, 0.1f);
   s_Registry->Add<HealthComponent>(s_spaceShip, g_Game.health);
   s_Registry->Add<ForceComponent>(s_spaceShip, 0.f, 0.f); // Initialize empty force
+
   // Spaceship's Mining Beam
   s_miningBeam = s_Registry->CreateEntity();
   s_Registry->Add<PositionComponent>(s_miningBeam, 0.f, 0.f);
@@ -181,9 +183,9 @@ void UpdateGame(float delta) {
         force->value.x += PUSH_FORCE_STEP;
       } else if (IsKeyDown(KEY_LEFT)) {
         force->value.x -= PUSH_FORCE_STEP;
-      } else if (force->value.x > PUSH_FORCE_STEP_HALF) {
+      } else if (force->value.x > PUSH_FORCE_STEP_HALF) { // correction
         force->value.x -= PUSH_FORCE_STEP;
-      } else if (force->value.x < -PUSH_FORCE_STEP_HALF) {
+      } else if (force->value.x < -PUSH_FORCE_STEP_HALF) { // correction
         force->value.x += PUSH_FORCE_STEP;
       } else {
         force->value.x = 0.f;
@@ -193,9 +195,9 @@ void UpdateGame(float delta) {
         force->value.y -= PUSH_FORCE_STEP;
       } else if (IsKeyDown(KEY_DOWN)) {
         force->value.y += PUSH_FORCE_STEP;
-      } else if (force->value.y > PUSH_FORCE_STEP_HALF) {
+      } else if (force->value.y > PUSH_FORCE_STEP_HALF) { // correction
         force->value.y -= PUSH_FORCE_STEP;
-      } else if (force->value.y < -PUSH_FORCE_STEP_HALF) {
+      } else if (force->value.y < -PUSH_FORCE_STEP_HALF) { // correction
         force->value.y += PUSH_FORCE_STEP;
       } else {
         force->value.y = 0.f;
