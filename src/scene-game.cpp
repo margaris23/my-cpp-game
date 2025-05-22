@@ -261,6 +261,7 @@ void UpdateGame(float delta) {
     s_Registry->Add<ColliderComponent>(s_spaceShip, SPACESHIP_SIZE.x, SPACESHIP_SIZE.y);
   }
 
+  // Position + Collision
   s_Registry->PositionSystem();
   s_Registry->CollisionDetectionSystem();
 
@@ -291,6 +292,7 @@ void UpdateGame(float delta) {
   std::visit([score_text](auto &&value) { score_text->value = fmt::format("{}", value); },
              score->value);
 
+  // Collision Resolution
   s_Registry->CollisionResolutionSystem();
 
   // Kill s_cores with zero health
@@ -337,9 +339,11 @@ void UpdateGame(float delta) {
       continue;
     }
 
-    // Update size based on health
+    // Update collider + size based on health
     auto render = s_Registry->Get<RenderComponent>(*it);
     render->dimensions.x = meteor_health->value;
+    auto collider = s_Registry->Get<ColliderComponent>(*it);
+    collider->dimensions.x = meteor_health->value;
 
     ++it;
   }
