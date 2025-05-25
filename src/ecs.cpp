@@ -1,6 +1,8 @@
 #include "ecs.hpp"
+#include "game.hpp"
 #include "raylib.h"
 #include "raymath.h"
+#include "reasings.h"
 #include <algorithm>
 #include <cmath>
 #include <functional>
@@ -39,7 +41,7 @@ void Registry::CleanupEntity(Entity entity) {
   Remove<DmgComponent>(entity);
   Remove<GameStateComponent>(entity);
   Remove<WeaponComponent>(entity);
-  // add more ...
+  Remove<InputComponent>(entity);
 }
 
 void Registry::DeleteEntity(Entity entity) {
@@ -302,6 +304,86 @@ void Registry::RenderSystem() {
   for (const auto &text : m_texts.dense) {
     const auto pos = m_positions.Get(text.entity);
     DrawText(text.value.c_str(), pos->value.x, pos->value.y, 20, text.color);
+  }
+}
+
+// Only 1 input component supported for now
+void Registry::InputSystem() {
+  const auto &input = m_inputs.dense[0];
+  const Entity spaceship = input.entity;
+
+  // TODO: implement a force accumulator
+  auto force = Get<ForceComponent>(spaceship);
+  if (force) {
+    // Simulate drag by applying force inc/dec per dt and limiting
+    if (IsKeyDown(KEY_RIGHT)) {
+      force->value.x += input.push_force_step;
+    } else if (IsKeyDown(KEY_LEFT)) {
+      force->value.x -= input.push_force_step;
+    } else if (force->value.x > input.push_force_step_half) { // correction
+      force->value.x -= input.push_force_step;
+    } else if (force->value.x < -input.push_force_step_half) { // correction
+      force->value.x += input.push_force_step;
+    } else {
+      force->value.x = 0.f;
+    }
+
+    if (IsKeyDown(KEY_UP)) {
+      force->value.y -= input.push_force_step;
+    } else if (IsKeyDown(KEY_DOWN)) {
+      force->value.y += input.push_force_step;
+    } else if (force->value.y > input.push_force_step_half) { // correction
+      force->value.y -= input.push_force_step;
+    } else if (force->value.y < -input.push_force_step_half) { // correction
+      force->value.y += input.push_force_step;
+    } else {
+      force->value.y = 0.f;
+    }
+
+    // Limit and then SetMag
+    if (Vector2Length(force->value) > input.max_push_force) {
+      force->value = Vector2Normalize(force->value);
+      force->value.x *= input.max_push_force;
+      force->value.y *= input.max_push_force;
+    }
+  }
+
+  // WEAPON FIRING
+  // Only 1 weapon supported for now
+  auto &weapon = m_weapons.dense[0];
+  const Entity miningBeam = weapon.entity;
+
+  if (IsKeyDown(KEY_SPACE)) {
+    if (!weapon.isFiring) {
+      weapon.isFiring = true;
+      weapon.firingDuration = 0;
+      Add<ColliderComponent>(miningBeam, Game::WEAPON_SIZE, 10.f);
+      Add<RenderComponent>(miningBeam, Layer::GROUND, Shape::RECTANGLE, BROWN, Game::WEAPON_SIZE,
+                           10.f);
+    } else {
+      auto beam_collider = Get<ColliderComponent>(miningBeam);
+
+      if (beam_collider) {
+        if (!beam_collider->collided_with.has_value() && weapon.firingDuration < 24.f) {
+          ++weapon.firingDuration;
+        }
+
+        // Ease(now, start, max_change, duration)
+        float tween =
+            EaseLinearIn(weapon.firingDuration, 10.f, Game::WEAPON_MAX_DISTANCE - 10.f, 24.f);
+        beam_collider->dimensions.y = tween;
+
+        auto beam_render = Get<RenderComponent>(miningBeam);
+        if (beam_render) {
+          beam_render->dimensions.y = tween;
+        }
+      }
+    }
+  } else if (weapon.isFiring) {
+    weapon.isFiring = false;
+    weapon.firingDuration = 0;
+    Remove<RenderComponent>(miningBeam);
+    Remove<ColliderComponent>(miningBeam);
   }
 }
 

@@ -232,6 +232,8 @@ struct WeaponComponent {
   Entity shooter;
   float max_length;
   Entity entity;
+  float firingDuration;
+  bool isFiring;
   explicit WeaponComponent(Entity shooter, float max_length)
       : shooter(shooter), max_length(max_length) {}
   ~WeaponComponent() = default;
@@ -252,6 +254,20 @@ struct GameStateComponent {
   GameStateComponent &operator=(GameStateComponent &&rhs) noexcept = default;
 };
 
+struct InputComponent {
+  float push_force_step;
+  float max_push_force;
+  Entity entity;
+  float push_force_step_half;
+  explicit InputComponent(float push_force_step, float max_push_force)
+      : push_force_step(push_force_step), max_push_force(max_push_force),
+        push_force_step_half(push_force_step / 2.f) {}
+  ~InputComponent() = default;
+  InputComponent(const InputComponent &other) = delete;
+  InputComponent(InputComponent &&other) noexcept = default;
+  InputComponent &operator=(InputComponent &&rhs) noexcept = default;
+};
+
 // Used for entities isolation i.e per scene
 class Registry {
 public:
@@ -266,6 +282,7 @@ public:
   void ResetSystem();
   void PositionSystem();
   void UISystem();
+  void InputSystem();
   void CollisionDetectionSystem();
   void CollisionResolutionSystem();
 
@@ -298,6 +315,8 @@ public:
       return m_stateValues.Add(entity, std::move(component));
     } else if constexpr (std::is_same_v<T, WeaponComponent>) {
       return m_weapons.Add(entity, std::move(component));
+    } else if constexpr (std::is_same_v<T, InputComponent>) {
+      return m_inputs.Add(entity, std::move(component));
     }
 
     return false;
@@ -328,6 +347,8 @@ public:
       m_stateValues.Remove(entity);
     } else if constexpr (std::is_same_v<T, WeaponComponent>) {
       m_weapons.Remove(entity);
+    } else if constexpr (std::is_same_v<T, InputComponent>) {
+      m_inputs.Remove(entity);
     }
   }
 
@@ -356,6 +377,8 @@ public:
       return m_stateValues.Get(entity);
     } else if constexpr (std::is_same_v<T, WeaponComponent>) {
       return m_weapons.Get(entity);
+    } else if constexpr (std::is_same_v<T, InputComponent>) {
+      return m_inputs.Get(entity);
     }
 
     return nullptr;
@@ -377,6 +400,7 @@ private:
   SparseSet<DmgComponent> m_dmgs;
   SparseSet<GameStateComponent> m_stateValues;
   SparseSet<WeaponComponent> m_weapons;
+  SparseSet<InputComponent> m_inputs;
 
   void CleanupEntity(Entity entity);
 

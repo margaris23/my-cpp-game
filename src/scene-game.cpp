@@ -2,10 +2,7 @@
 #include "fmt/core.h"
 #include "game.hpp"
 #include "raylib.h"
-#include "raymath.h"
-#include "reasings.h"
 #include "scenes.hpp"
-#include <algorithm>
 #include <random>
 #include <variant>
 #include <vector>
@@ -81,6 +78,7 @@ void LoadGame() {
   s_Registry->Add<DmgComponent>(s_spaceShip, 0.1f);
   s_Registry->Add<HealthComponent>(s_spaceShip, g_Game.health);
   s_Registry->Add<ForceComponent>(s_spaceShip, 0.f, 0.f); // Initialize empty force
+  s_Registry->Add<ECS::InputComponent>(s_spaceShip, PUSH_FORCE_STEP, MAX_PUSH_FORCE);
 
   // Spaceship's Mining Beam
   s_miningBeam = s_Registry->CreateEntity();
@@ -180,76 +178,8 @@ void UpdateGame(float delta) {
       return;
     }
 
-    // TODO: implement a force accumulator
-    auto force = s_Registry->Get<ForceComponent>(s_spaceShip);
-    if (force) {
-      // Simulate drag by applying force inc/dec per dt and limiting
-      if (IsKeyDown(KEY_RIGHT)) {
-        force->value.x += PUSH_FORCE_STEP;
-      } else if (IsKeyDown(KEY_LEFT)) {
-        force->value.x -= PUSH_FORCE_STEP;
-      } else if (force->value.x > PUSH_FORCE_STEP_HALF) { // correction
-        force->value.x -= PUSH_FORCE_STEP;
-      } else if (force->value.x < -PUSH_FORCE_STEP_HALF) { // correction
-        force->value.x += PUSH_FORCE_STEP;
-      } else {
-        force->value.x = 0.f;
-      }
-
-      if (IsKeyDown(KEY_UP)) {
-        force->value.y -= PUSH_FORCE_STEP;
-      } else if (IsKeyDown(KEY_DOWN)) {
-        force->value.y += PUSH_FORCE_STEP;
-      } else if (force->value.y > PUSH_FORCE_STEP_HALF) { // correction
-        force->value.y -= PUSH_FORCE_STEP;
-      } else if (force->value.y < -PUSH_FORCE_STEP_HALF) { // correction
-        force->value.y += PUSH_FORCE_STEP;
-      } else {
-        force->value.y = 0.f;
-      }
-
-      // Limit and then SetMag
-      if (Vector2Length(force->value) > MAX_PUSH_FORCE) {
-        force->value = Vector2Normalize(force->value);
-        force->value.x *= 5.f;
-        force->value.y *= 5.f;
-      }
-    }
-
-    // WEAPON FIRING
-    if (IsKeyDown(KEY_SPACE)) {
-      const auto weapon = s_Registry->Get<WeaponComponent>(s_miningBeam);
-      if (!s_isFiring) {
-        s_isFiring = true;
-        s_firingDuration = 0;
-        s_Registry->Add<ColliderComponent>(s_miningBeam, Game::WEAPON_SIZE, 10.f);
-        s_Registry->Add<RenderComponent>(s_miningBeam, Layer::GROUND, Shape::RECTANGLE, BROWN,
-                                         Game::WEAPON_SIZE, 10.f);
-      } else {
-        auto beam_collider = s_Registry->Get<ColliderComponent>(s_miningBeam);
-
-        if (beam_collider) {
-          if (!beam_collider->collided_with.has_value() && s_firingDuration < 24.f) {
-            ++s_firingDuration;
-          }
-
-          // Ease(now, start, max_change, duration)
-          float tween =
-              EaseLinearIn(s_firingDuration, 10.f, Game::WEAPON_MAX_DISTANCE - 10.f, 24.f);
-          beam_collider->dimensions.y = tween;
-
-          auto beam_render = s_Registry->Get<RenderComponent>(s_miningBeam);
-          if (beam_render) {
-            beam_render->dimensions.y = tween;
-          }
-        }
-      }
-    } else if (s_isFiring) {
-      s_isFiring = false;
-      s_firingDuration = 0;
-      s_Registry->Remove<RenderComponent>(s_miningBeam);
-      s_Registry->Remove<ColliderComponent>(s_miningBeam);
-    }
+    // Input
+    s_Registry->InputSystem();
   }
 
   if (GameState::PAUSE == s_state) {
