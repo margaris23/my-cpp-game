@@ -10,6 +10,8 @@ constexpr int MAX_METEOR_SIZE = 50;
 constexpr float METEOR_DMG = 0.1f;
 constexpr float METEOR_CORE_SIZE = 10.f;
 constexpr float METEOR_CORE_HEALTH = 0.1f;
+constexpr float METEOR_MIN_VELOCITY = -.5f;
+constexpr float METEOR_MAX_VELOCITY = .5f;
 
 constexpr float SPACESHIP_INITIAL_HEALTH = 10.f;
 constexpr float SPACESHIP_INITIAL_LIVES = 3.f;
@@ -40,6 +42,8 @@ struct Game {
     float meteor_dmg = METEOR_DMG;
     float meteor_core_size = METEOR_CORE_SIZE;
     float meteor_core_health = METEOR_CORE_HEALTH;
+    float meteor_min_velocity = METEOR_MIN_VELOCITY;
+    float meteor_max_velocity = METEOR_MAX_VELOCITY;
   } meteors;
 
   // Weapon Data, per level ???

@@ -68,7 +68,8 @@ void LoadGame() {
   std::uniform_real_distribution<float> rnd_y(meteors_offset, GetScreenHeight() - meteors_offset);
   std::uniform_real_distribution<float> rnd_size(g_Game.meteors.min_meteor_size,
                                                  g_Game.meteors.max_meteor_size);
-  std::uniform_real_distribution<float> rnd_velocity(-1.f, 1.f);
+  std::uniform_real_distribution<float> rnd_velocity(g_Game.meteors.meteor_min_velocity,
+                                                     g_Game.meteors.meteor_max_velocity);
 
   // Our Hero
   s_spaceShip = s_Registry->CreateEntity();
