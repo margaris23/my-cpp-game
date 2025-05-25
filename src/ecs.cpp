@@ -1,6 +1,8 @@
 #include "ecs.hpp"
 #include "raylib.h"
+#include "raymath.h"
 #include <algorithm>
+#include <cmath>
 #include <functional>
 #include <optional>
 #include <string>
@@ -47,10 +49,12 @@ void Registry::DeleteEntity(Entity entity) {
 }
 
 void Registry::Init() {
+  // TODO: Experimentation - remove
   // s_typeToBitSetMap[std::type_index(typeid(TransformComponent))] = 1 << 0;
   // s_typeToBitSetMap[std::type_index(typeid(RenderComponent))] = 1 << 1;
   // s_typeToBitSetMap[std::type_index(typeid(CollisionComponent))] = 1 << 2;
 }
+
 void Registry::PositionSystem() {
   float screen_width = GetScreenWidth();
   float screen_height = GetScreenHeight();
@@ -231,6 +235,27 @@ void Registry::RenderSystem() {
         // DrawRectangle(pos->value.x + 1.f, pos->value.y + 1.f,
         //               render.dimensions.x - 2.f, render.dimensions.y - 2.f,
         //               RAYWHITE);
+      } else if (Shape::METEOR == render.shape) {
+        Vector2 center{pos->value.x, pos->value.y};
+
+        // ==== METEORS ====
+        const auto &values = render.noise_values;
+        const float two_pi_count = 2.f * PI / values.size();
+
+        // TODO: make more performant
+        for (int i = 0; i < values.size(); i++) {
+          const int next = (i + 1) % values.size();
+          const float radius[2]{render.dimensions.x + values[i],
+                                render.dimensions.x + values[next]};
+          const float angle[2]{i * two_pi_count, next * two_pi_count};
+          const Vector2 coeff[2]{
+              {center.x + cosf(angle[0]) * radius[0], center.y + sinf(angle[0]) * radius[0]},
+              {center.x + cosf(angle[1]) * radius[1], center.y + sinf(angle[1]) * radius[1]}};
+
+          // DrawLineV(coeff[0], coeff[1], render.color); // TRANSPARENT
+          DrawTriangle(center, coeff[1], coeff[0], render.color); // SOLID
+        }
+
       } else if (Shape::ELLIPSE == render.shape) {
         DrawEllipseLines(pos->value.x, pos->value.y, render.dimensions.x, render.dimensions.y,
                          render.color);

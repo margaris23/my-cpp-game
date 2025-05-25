@@ -1,6 +1,8 @@
+#include "FastNoiseLite.h"
 #include "game.hpp"
 #include "raylib.h"
 #include "scenes.hpp"
+#include <cmath>
 #include <iostream>
 #include <ostream>
 
@@ -22,6 +24,15 @@ Scene g_currentScene = Scene::NONE;
 static bool s_AppShouldExit = false;
 static bool s_OverlayMenu = false;
 
+// static float RADIUS = 150.0f;
+// static int POINT_COUNT = 91;
+// static float NOISE_AMPLITUDE = 14.5f;
+// static constexpr float NOISE_SCALE = 0.1f;
+
+float PerlinNoise1D(float x);
+
+FastNoiseLite noise;
+
 int main(void) {
   InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "MINOIDS");
   SetExitKey(KEY_NULL); // disable Esc key
@@ -31,6 +42,9 @@ int main(void) {
   emscripten_set_main_loop(UpdateDrawFrame, 60, 1);
 #else
   SetTargetFPS(60);
+
+  // noise.SetNoiseType(FastNoiseLite::NoiseType_Perlin);
+  // noise.SetFrequency(NOISE_SCALE);
 
   Game::InitGame();
   LoadScene(Scene::INTRO);
@@ -58,6 +72,48 @@ static void UpdateDrawFrame(void) {
   // UPDATE PHASE
   UpdateCurrentScene(delta);
 
+  // Vector2 center = {SCREEN_WIDTH / 2.0f, SCREEN_HEIGHT / 2.0f};
+  //
+  // if (IsKeyDown(KEY_UP)) {
+  //   NOISE_AMPLITUDE += 0.1f;
+  // } else if (IsKeyDown(KEY_DOWN)) {
+  //   NOISE_AMPLITUDE -= 0.1f;
+  // }
+  //
+  // if (IsKeyPressed(KEY_LEFT)) {
+  //   POINT_COUNT -= 1;
+  // } else if (IsKeyPressed(KEY_RIGHT)) {
+  //   POINT_COUNT += 1;
+  // }
+  //
+  // if (IsKeyPressed(KEY_ESCAPE)) {
+  //   s_AppShouldExit = true;
+  // }
+  //
+  // DrawText(TextFormat("Points: %d", POINT_COUNT), 10, 10, 20, GREEN);
+  // DrawText(TextFormat("Noise Amplitude: %f", NOISE_AMPLITUDE), 10, 30, 20, BLUE);
+  //
+  // Vector2 points[POINT_COUNT];
+  //
+  // for (int i = 0; i < POINT_COUNT; i++) {
+  //   float angle = (2 * PI * i) / POINT_COUNT;
+  //
+  //   // Apply noise using angle as x-axis input
+  //   float noiseValue = noise.GetNoise((float)i, 0.0f); // 1D noise
+  //   float radius = RADIUS + noiseValue * NOISE_AMPLITUDE;
+  //
+  //   points[i].x = center.x + cosf(angle) * radius;
+  //   points[i].y = center.y + sinf(angle) * radius;
+  // }
+  //
+  // // Draw polygon
+  // for (int i = 0; i < POINT_COUNT; i++) {
+  //   DrawLineV(points[i], points[(i + 1) % POINT_COUNT], DARKBLUE);
+  // }
+
+  // Optional: Draw base circle for reference
+  // DrawCircleLines((int)center.x, (int)center.y, RADIUS, LIGHTGRAY);
+
   // DRAW PHASE
   BeginDrawing();
 
@@ -80,6 +136,9 @@ static void UpdateDrawFrame(void) {
 
   EndDrawing();
 }
+
+// Basic pseudo Perlin noise function using sine
+float PerlinNoise1D(float x) { return 0.5f * (sinf(x) + sinf(x * 0.5f + 3.14f)); }
 
 static void UnloadCurrentScene() {
   switch (g_currentScene) {

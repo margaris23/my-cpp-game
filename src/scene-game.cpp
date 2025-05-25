@@ -16,6 +16,9 @@ constexpr static float MAX_PUSH_FORCE = 5.f;
 constexpr static float PUSH_FORCE_STEP = .2f;
 constexpr static float PUSH_FORCE_STEP_HALF = PUSH_FORCE_STEP / 2.f;
 
+constexpr static int METEOR_POINT_COUNT = 80;
+constexpr static float METEOR_NOISE_AMPLITUDE = 8.1f;
+
 static SceneEvent s_Event = SceneEvent::NONE;
 static bool s_IsFocused = false;
 
@@ -58,6 +61,7 @@ void LoadGame() {
   float meteors_offset = Game::MAX_METEOR_SIZE + METEORS_WINDOW_PADDING;
 
   s_Registry = std::make_unique<ECS::Registry>();
+  s_Registry->Init();
 
   // Randomizers
   std::uniform_real_distribution<float> rnd_x(meteors_offset, GetScreenWidth() - meteors_offset);
@@ -101,8 +105,7 @@ void LoadGame() {
     Entity core = s_cores.back();
     s_Registry->Add<PositionComponent>(core, posX, posY);
     s_Registry->Add<VelocityComponent>(core, velX, velY);
-    s_Registry->Add<RenderComponent>(core, Layer::SUB, Shape::CIRCLE, DARKGREEN,
-                                     Game::METEOR_CORE_SIZE);
+    s_Registry->Add<RenderComponent>(core, Layer::SUB, Shape::CIRCLE, DARKGREEN, 0.f);
     s_Registry->Add<HealthComponent>(core, Game::METEOR_CORE_HEALTH);
     // NO Collider until core revealed
 
@@ -112,7 +115,8 @@ void LoadGame() {
     s_Registry->Add<PositionComponent>(meteor, posX, posY);
     // TODO: bigger asteroids should move slower
     s_Registry->Add<VelocityComponent>(meteor, velX, velY);
-    s_Registry->Add<RenderComponent>(meteor, Layer::GROUND, Shape::CIRCLE, BLACK, radius);
+    s_Registry->Add<RenderComponent>(meteor, Layer::GROUND, Shape::METEOR, BLACK, radius,
+                                     METEOR_NOISE_AMPLITUDE, METEOR_POINT_COUNT);
     s_Registry->Add<ColliderComponent>(meteor, radius);
     s_Registry->Add<HealthComponent>(meteor, radius); // bigger means more health
     s_Registry->Add<DmgComponent>(meteor, Game::METEOR_DMG);
@@ -335,6 +339,10 @@ void UpdateGame(float delta) {
           core_pos->value.y += 10.f;
         }
         s_Registry->Add<ColliderComponent>(core, Game::METEOR_CORE_SIZE);
+
+        // Update render so that it is displayed
+        auto render = s_Registry->Get<RenderComponent>(core);
+        render->dimensions.x = Game::METEOR_CORE_SIZE;
       }
       continue;
     }

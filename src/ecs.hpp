@@ -1,11 +1,13 @@
 #ifndef ECS_H
 #define ECS_H
 
+#include "FastNoiseLite.h"
 #include "fmt/core.h"
 #include "raylib.h"
 #include "sparse-set.hpp"
 #include <cstdint>
 #include <optional>
+#include <random>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -25,6 +27,12 @@ using Entity = size_t;
 // template <typename T>
 // using ComponentGroups = std::unordered_map<ComponentMask, SparseSet<T>>;
 
+namespace {
+static constexpr float NOISE_SCALE = 0.1f;
+static inline FastNoiseLite s_noise;
+static inline std::random_device s_rd;
+} // namespace
+
 enum class Shape {
   RECTANGLE,
   CIRCLE,
@@ -32,6 +40,7 @@ enum class Shape {
   // Only for RenderComponents
   RECTANGLE_SOLID,
   ELLIPSE,
+  METEOR,
 };
 enum class UIElement {
   TEXT,
@@ -113,20 +122,43 @@ struct UIComponent {
 // RenderComponent is for primitive drawables
 struct RenderComponent {
   Color color;
-  Vector2 dimensions; // width/height or radius based on shape
+  Vector2 dimensions; // width/height or radius or radius/noise_amp based on shape
   Entity entity;
   Shape shape;
   Layer priority; // for layering
-  RenderComponent(Layer priority, Shape shape, Color color, float width, float height)
+  std::vector<float> noise_values;
+
+  // Contructors - TODO: constraint shapes
+  RenderComponent(Layer priority, Shape shape /*Rectangle */, Color color, float width,
+                  float height)
       : priority(priority), color(color), dimensions({width, height}), shape(shape) {}
-  RenderComponent(Layer priority, Shape shape, Color color, float radius)
+
+  RenderComponent(Layer priority, Shape shape /* Circle */, Color color, float radius)
       : priority(priority), color(color), dimensions({radius, radius}), shape(shape) {}
+
+  RenderComponent(Layer priority, Shape shape /* Meteor */, Color color, float radius,
+                  float noise_amplitude, int point_count)
+      : priority(priority), color(color), dimensions({radius, noise_amplitude}), shape(shape) {
+
+    s_noise.SetNoiseType(FastNoiseLite::NoiseType_Perlin);
+    s_noise.SetFrequency(NOISE_SCALE);
+    s_noise.SetSeed(s_rd());
+
+    noise_values.reserve(point_count);
+    for (int i = 0; i < point_count; i++) {
+      float noiseValue = s_noise.GetNoise<float>(i, 0.0f);
+      noise_values.push_back(noiseValue * noise_amplitude);
+    }
+  }
+
   ~RenderComponent() = default;
   RenderComponent(const RenderComponent &other) = delete;
   RenderComponent(RenderComponent &&other) noexcept = default;
   RenderComponent &operator=(RenderComponent &&rhs) noexcept = default;
+
   bool IsVisible() {
-    return Shape::CIRCLE == shape && dimensions.x > 0.f || dimensions.x > 0.f && dimensions.y > 0.f;
+    return (Shape::CIRCLE == shape || Shape::METEOR == shape) && dimensions.x > 0.f ||
+           dimensions.x > 0.f && dimensions.y > 0.f;
   }
 };
 
@@ -148,7 +180,7 @@ struct SpriteComponent {
   }
 
   SpriteComponent(const SpriteComponent &other) = delete;
-  SpriteComponent& operator=(const SpriteComponent &other) = delete;
+  SpriteComponent &operator=(const SpriteComponent &other) = delete;
 
   // safe MOVE Semantics due to Texture
   SpriteComponent(SpriteComponent &&other) noexcept
