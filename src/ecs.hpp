@@ -3,8 +3,10 @@
 
 #include "FastNoiseLite.h"
 #include "fmt/core.h"
+#include "fmt/format.h"
 #include "raylib.h"
 #include "sparse-set.hpp"
+#include <atomic>
 #include <cstdint>
 #include <optional>
 #include <random>
@@ -33,9 +35,25 @@ static inline FastNoiseLite s_noise;
 static inline std::random_device s_rd;
 } // namespace
 
+class ThreadSafeIdGenerator {
+public:
+  // Get next unique ID
+  static size_t getNextId() { return counter.fetch_add(1, std::memory_order_relaxed); }
+
+  // Get current ID without incrementing
+  static size_t getCurrentId() { return counter.load(std::memory_order_relaxed); }
+
+  // Reset the counter (use with caution)
+  static void reset(size_t value = 0) { counter.store(value, std::memory_order_relaxed); }
+
+private:
+  static std::atomic<size_t> counter;
+};
+
 enum class Shape {
   RECTANGLE,
   CIRCLE,
+  LINE,
 
   // Only for RenderComponents
   RECTANGLE_SOLID,
@@ -129,7 +147,7 @@ struct RenderComponent {
   std::vector<float> noise_values;
 
   // Contructors - TODO: constraint shapes
-  RenderComponent(Layer priority, Shape shape /*Rectangle */, Color color, float width,
+  RenderComponent(Layer priority, Shape shape /*Rectangle | Line */, Color color, float width,
                   float height)
       : priority(priority), color(color), dimensions({width, height}), shape(shape) {}
 
@@ -157,16 +175,21 @@ struct RenderComponent {
   RenderComponent &operator=(RenderComponent &&rhs) noexcept = default;
 
   bool IsVisible() {
-    return (Shape::CIRCLE == shape || Shape::METEOR == shape) && dimensions.x > 0.f ||
-           dimensions.x > 0.f && dimensions.y > 0.f;
+    if (Shape::CIRCLE == shape || Shape::METEOR == shape) {
+      return dimensions.x > 0.f;
+    } else if (Shape::RECTANGLE == shape) {
+      return dimensions.x > 0.f && dimensions.y > 0.f;
+    }
+    // LINE
+    return dimensions.x > 0.f || dimensions.y > 0.f;
   }
 };
 
 struct SpriteComponent {
   Texture2D texture;
-  Layer priority; // for layering
+  Layer priority;
   Entity entity;
-  bool m_owns_texture;
+  bool m_owns_texture; // RAII for the texture
 
   explicit SpriteComponent(Layer priority, std::string_view filename) : priority(priority) {
     texture = LoadTexture(fmt::format(ASSETS_PATH "/{}", filename).data());
@@ -268,6 +291,36 @@ struct InputComponent {
   InputComponent &operator=(InputComponent &&rhs) noexcept = default;
 };
 
+// Particle Emitter
+struct EmitterComponent {
+  int rate;                // in frames
+  float particle_lifetime; // in frames (used in Health i.e float)
+  Shape particle_shape;
+  Vector2 particle_velocity;
+  Entity entity;
+  bool active = false;
+  int m_timer = 0; // in frames
+  explicit EmitterComponent(int emission_rate, int particle_lifetime, Shape particle_shape,
+                            Vector2 particle_velocity)
+      : rate(emission_rate), particle_lifetime(particle_lifetime), particle_shape(particle_shape),
+        particle_velocity(particle_velocity) {}
+  ~EmitterComponent() = default;
+  EmitterComponent(const EmitterComponent &other) = delete;
+  EmitterComponent(EmitterComponent &&other) noexcept = default;
+  EmitterComponent &operator=(EmitterComponent &&rhs) noexcept = default;
+};
+
+struct ParticleComponent {
+  Entity emitter;
+  Entity entity;
+  bool active = true; // TODO: avoid
+  explicit ParticleComponent(Entity emitter) : emitter(emitter) {}
+  ~ParticleComponent() = default;
+  ParticleComponent(const ParticleComponent &other) = delete;
+  ParticleComponent(ParticleComponent &&other) noexcept = default;
+  ParticleComponent &operator=(ParticleComponent &&rhs) noexcept = default;
+};
+
 // Used for entities isolation i.e per scene
 class Registry {
 public:
@@ -285,6 +338,9 @@ public:
   void InputSystem();
   void CollisionDetectionSystem();
   void CollisionResolutionSystem();
+  void ParticleSystem();
+
+  void Debug();
 
   // TEMPLATES
   template <typename T, typename... Args> bool Add(Entity entity, Args &&...args) {
@@ -317,6 +373,10 @@ public:
       return m_weapons.Add(entity, std::move(component));
     } else if constexpr (std::is_same_v<T, InputComponent>) {
       return m_inputs.Add(entity, std::move(component));
+    } else if constexpr (std::is_same_v<T, EmitterComponent>) {
+      return m_emitters.Add(entity, std::move(component));
+    } else if constexpr (std::is_same_v<T, ParticleComponent>) {
+      return m_particles.Add(entity, std::move(component));
     }
 
     return false;
@@ -349,6 +409,10 @@ public:
       m_weapons.Remove(entity);
     } else if constexpr (std::is_same_v<T, InputComponent>) {
       m_inputs.Remove(entity);
+    } else if constexpr (std::is_same_v<T, EmitterComponent>) {
+      m_emitters.Remove(entity);
+    } else if constexpr (std::is_same_v<T, ParticleComponent>) {
+      m_particles.Remove(entity);
     }
   }
 
@@ -379,13 +443,19 @@ public:
       return m_weapons.Get(entity);
     } else if constexpr (std::is_same_v<T, InputComponent>) {
       return m_inputs.Get(entity);
+    } else if constexpr (std::is_same_v<T, EmitterComponent>) {
+      return m_emitters.Get(entity);
+    } else if constexpr (std::is_same_v<T, ParticleComponent>) {
+      return m_particles.Get(entity);
     }
 
     return nullptr;
   }
 
 private:
-  size_t m_entityCounter = 0;
+  // size_t m_entityCounter = 0;
+
+  // TODO: use Tombstoned vector for O(1) delete and element reusability
   std::vector<Entity> m_entities;
 
   SparseSet<PositionComponent> m_positions;
@@ -401,10 +471,16 @@ private:
   SparseSet<GameStateComponent> m_stateValues;
   SparseSet<WeaponComponent> m_weapons;
   SparseSet<InputComponent> m_inputs;
+  SparseSet<EmitterComponent> m_emitters;
+  SparseSet<ParticleComponent> m_particles;
 
   void CleanupEntity(Entity entity);
 
   bool m_renders_sorted;
+
+  // ENTROPY
+  std::random_device rd;
+  std::mt19937 gen;
 };
 
 // template <typename... C> void RegisterComponentGroup() {

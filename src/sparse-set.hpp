@@ -1,12 +1,14 @@
 #ifndef SPARSE_SET_H
 #define SPARSE_SET_H
 
+#include <algorithm>
 #include <climits>
 #include <cstddef>
 #include <utility>
 #include <vector>
 
-static constexpr int INITIAL_ELEMENTS = 50;
+// allocate enough memory to support large number of particles
+static constexpr int INITIAL_ELEMENTS = 5000;
 static constexpr size_t EMPTY = ULONG_LONG_MAX - 1;
 
 template <typename T> class SparseSet {
@@ -28,7 +30,7 @@ public:
 
   // throws when out of bounds
   bool contains(size_t id) const {
-    return id >= sparse.size() || sparse.at(id) != EMPTY;
+    return id < sparse.size() && sparse.at(id) != EMPTY;
   }
 
   // TODO: reuse and/or update
@@ -55,15 +57,13 @@ public:
 
   // TODO: return bool for success removal
   void Remove(size_t entity) {
-    // fmt::println("REMOVING {} for {}", typeid(T).name(), entity);
     if (contains(entity)) {
-      size_t index = sparse.at(entity);
+      size_t dense_index = sparse.at(entity);
       size_t last_items_entity = dense.at(dense.size() - 1).entity;
-      std::swap(dense.at(dense.size() - 1), dense.at(index));
-      sparse.at(last_items_entity) = index;
+      std::swap(dense.at(dense.size() - 1), dense.at(dense_index));
+      sparse.at(last_items_entity) = dense_index;
       sparse.at(entity) = EMPTY;
       dense.pop_back();
-      // fmt::println("\t{} -> {} REMOVED", typeid(T).name(), dense.size());
     }
   }
 

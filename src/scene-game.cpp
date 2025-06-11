@@ -24,7 +24,7 @@ static std::unique_ptr<ECS::Registry> s_Registry;
 using ECS::PositionComponent, ECS::RenderComponent, ECS::TextComponent, ECS::VelocityComponent,
     ECS::GameStateComponent, ECS::UIComponent, ECS::ForceComponent, ECS::DmgComponent,
     ECS::ColliderComponent, ECS::WeaponComponent, ECS::HealthComponent, ECS::SpriteComponent,
-    ECS::UIElement, ECS::Entity, ECS::Layer, ECS::Shape;
+    ECS::EmitterComponent, ECS::UIElement, ECS::Entity, ECS::Layer, ECS::Shape;
 
 // ENTROPY
 static std::random_device rd;
@@ -41,6 +41,7 @@ static Entity s_spaceshipHealth;
 static Entity s_spaceshipLives;
 static Entity s_spaceShip;
 static Entity s_miningBeam;
+static Entity s_beamParticle;
 static Entity s_score;
 static Entity s_coresCount;
 static Entity s_level;
@@ -85,6 +86,9 @@ void LoadGame() {
   s_Registry->Add<PositionComponent>(s_miningBeam, 0.f, 0.f);
   s_Registry->Add<WeaponComponent>(s_miningBeam, s_spaceShip, Game::WEAPON_MAX_DISTANCE);
   s_Registry->Add<DmgComponent>(s_miningBeam, Game::WEAPON_DMG);
+  // s_Registry->Add<EmitterComponent>(s_miningBeam, 15 /* emmission rate */,
+  //                                   50 /* particle lifetime */, Shape::LINE,
+  //                                   Vector2{0.f, 1.f} /* particle velocity */);
 
   // Generate Meteors
   s_meteors = std::vector<Entity>();
@@ -199,6 +203,10 @@ void UpdateGame(float delta) {
   // Position + Collision
   s_Registry->PositionSystem();
   s_Registry->CollisionDetectionSystem();
+
+  // Particles after Input + Collision (Not sure if this is ok???)
+  // We may have particle generation from weapons, collisions, but what about positioning
+  s_Registry->ParticleSystem();
 
   // SCORE SYSTEM
   // CORES
@@ -332,6 +340,8 @@ void DrawGame() {
   //     s_Event = SceneEvent::PAUSE;
   //   }
   // }
+
+  s_Registry->Debug();
 
   // DrawEllipseLines(100.f, 100.f, 20.f, 10.f, BLACK);
 

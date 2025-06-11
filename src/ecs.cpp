@@ -1,4 +1,5 @@
 #include "ecs.hpp"
+#include "fmt/core.h"
 #include "game.hpp"
 #include "raylib.h"
 #include "raymath.h"
@@ -7,23 +8,28 @@
 #include <cmath>
 #include <functional>
 #include <optional>
+#include <random>
 #include <string>
 #include <variant>
 
 namespace ECS {
 
+std::atomic<size_t> ThreadSafeIdGenerator::counter(0);
+
 // std::unordered_map<std::type_index, std::bitset<MAX_COMPONENTS>> s_typeToBitSetMap;
 
 Entity Registry::CreateEntity() {
-  size_t index = m_entityCounter++;
+  size_t index = ThreadSafeIdGenerator::getNextId();
   m_entities.push_back(index);
   return index;
 }
 
 Registry::~Registry() {
-  for (auto it = m_entities.begin(); it != m_entities.end();) {
-    CleanupEntity(*it);
-    it = m_entities.erase(it);
+  if (m_entities.size() > 0) {
+    for (auto it = m_entities.begin(); it != m_entities.end();) {
+      CleanupEntity(*it);
+      it = m_entities.erase(it);
+    }
   }
 }
 
@@ -33,7 +39,7 @@ void Registry::CleanupEntity(Entity entity) {
   Remove<ColliderComponent>(entity);
   Remove<TextComponent>(entity);
   Remove<RenderComponent>(entity);
-  m_renders_sorted = false;
+  m_renders_sorted = false; // will trigger sorting in RenderSystem
   Remove<SpriteComponent>(entity);
   Remove<ForceComponent>(entity);
   Remove<UIComponent>(entity);
@@ -42,12 +48,13 @@ void Registry::CleanupEntity(Entity entity) {
   Remove<GameStateComponent>(entity);
   Remove<WeaponComponent>(entity);
   Remove<InputComponent>(entity);
+  Remove<EmitterComponent>(entity);
+  Remove<ParticleComponent>(entity);
 }
 
 void Registry::DeleteEntity(Entity entity) {
-  const auto &it = std::remove(m_entities.begin(), m_entities.end(), entity);
-  m_entities.pop_back();
   CleanupEntity(entity);
+  m_entities.erase(std::remove(m_entities.begin(), m_entities.end(), entity), m_entities.end());
 }
 
 void Registry::Init() {
@@ -55,6 +62,7 @@ void Registry::Init() {
   // s_typeToBitSetMap[std::type_index(typeid(TransformComponent))] = 1 << 0;
   // s_typeToBitSetMap[std::type_index(typeid(RenderComponent))] = 1 << 1;
   // s_typeToBitSetMap[std::type_index(typeid(CollisionComponent))] = 1 << 2;
+  gen = std::mt19937(rd());
 }
 
 void Registry::PositionSystem() {
@@ -169,6 +177,30 @@ void Registry::CollisionResolutionSystem() {
         // auto pos = positions.Get(collider.entity);
         // Add<ForceComponent>(collider.entity, -10.f, -10.f);
       }
+
+      // generate particles
+      if (Shape::CIRCLE == collider.shape) {
+        // Randomize
+        auto meteor_vel = Get<VelocityComponent>(collider.entity);
+        auto pos = Get<PositionComponent>(collider.entity);
+
+        auto dir = Vector2Subtract(meteor_vel->value, pos->value);
+        dir.x = dir.x < 0 ? -1.f : 1.f;
+        dir.y = dir.y < 0 ? -1.f : 1.f;
+
+        std::uniform_real_distribution<float> rnd_vel_y(meteor_vel->value.y + dir.y * 5.f,
+                                                        meteor_vel->value.y + dir.y * 10.f);
+        std::uniform_real_distribution<float> rnd_vel_x(meteor_vel->value.x + dir.x * 5.f,
+                                                        meteor_vel->value.x + dir.x * 10.f);
+        // Generate particle -- NO Emitter for now ...
+        Entity particle = CreateEntity();
+        Add<RenderComponent>(particle, Layer::GROUND, Shape::ELLIPSE, BLACK, 5.f, 5.f);
+        Add<HealthComponent>(particle, 10.f);
+        Add<PositionComponent>(particle, pos->value.x, pos->value.y);
+        Add<VelocityComponent>(particle, rnd_vel_y(gen), rnd_vel_x(gen));
+        Add<ParticleComponent>(particle, pos->entity);
+      }
+
       collider.collided_with.reset();
     }
   }
@@ -258,6 +290,9 @@ void Registry::RenderSystem() {
           DrawTriangle(center, coeff[1], coeff[0], render.color); // SOLID
         }
 
+      } else if (Shape::LINE == render.shape) {
+        DrawLine(pos->value.x, pos->value.y, pos->value.x + render.dimensions.x,
+                 pos->value.y + render.dimensions.y, render.color);
       } else if (Shape::ELLIPSE == render.shape) {
         DrawEllipseLines(pos->value.x, pos->value.y, render.dimensions.x, render.dimensions.y,
                          render.color);
@@ -358,6 +393,15 @@ void Registry::InputSystem() {
       weapon.isFiring = true;
       weapon.firingDuration = 0;
       Add<ColliderComponent>(miningBeam, Game::WEAPON_SIZE, 10.f);
+
+      // Enable Emitter
+      // auto emitter = Get<EmitterComponent>(miningBeam);
+      // if (emitter && !emitter->active) {
+      //   emitter->active = true;
+      //   emitter->m_timer = 0.f;
+      //   fmt::println("Emitter: STATUS {}", emitter->active);
+      // }
+
       Add<RenderComponent>(miningBeam, Layer::GROUND, Shape::RECTANGLE, BROWN, Game::WEAPON_SIZE,
                            10.f);
     } else {
@@ -373,6 +417,7 @@ void Registry::InputSystem() {
             EaseLinearIn(weapon.firingDuration, 10.f, Game::WEAPON_MAX_DISTANCE - 10.f, 24.f);
         beam_collider->dimensions.y = tween;
 
+        // Update Weapon's RenderComponent
         auto beam_render = Get<RenderComponent>(miningBeam);
         if (beam_render) {
           beam_render->dimensions.y = tween;
@@ -382,11 +427,92 @@ void Registry::InputSystem() {
   } else if (weapon.isFiring) {
     weapon.isFiring = false;
     weapon.firingDuration = 0;
+    // auto emitter = Get<EmitterComponent>(miningBeam);
+    // if (emitter) {
+    //   emitter->active = false;
+    //   emitter->m_timer = 0.f;
+    //   fmt::println("Emitter: STATUS {}", emitter->active);
+    // }
     Remove<RenderComponent>(miningBeam);
     Remove<ColliderComponent>(miningBeam);
   }
 }
 
+void Registry::ParticleSystem() {
+  for (auto &emitter : m_emitters.dense) {
+    if (!emitter.active) {
+      continue;
+    }
+
+    ++emitter.m_timer;
+    if (emitter.m_timer >= emitter.rate) {
+      fmt::println("Emitter FIRE: {}", emitter.m_timer);
+      emitter.m_timer = 0;
+
+      // Generate Particles (emitter is the origin)
+      auto emitter_pos = Get<PositionComponent>(emitter.entity);
+
+      // Randomizers
+      std::uniform_int_distribution<int> number(3, 5);
+      std::uniform_real_distribution<float> rnd_offset(-5.f, 5.f);
+      std::uniform_real_distribution<float> rnd_velocity(emitter.particle_velocity.y - 5.f,
+                                                         emitter.particle_velocity.y);
+
+      // multiple particles -> SEGFAULT
+      // for (int i = 0; i < number(gen); i++) {
+      // Entity particle = CreateEntity();
+      // fmt::println("Generated: {}", particle);
+      // Add<RenderComponent>(particle, Layer::GROUND, emitter.particle_shape, MAROON, 0.f, 20.f);
+      // Add<HealthComponent>(particle, emitter.particle_lifetime);
+      // Add<PositionComponent>(particle, emitter_pos->value.x, emitter_pos->value.y);
+      // Add<VelocityComponent>(particle, rnd_velocity(gen), emitter.particle_velocity.y);
+      // // connect particle with emitter, add position offset
+      // Add<ParticleComponent>(particle, emitter.entity, rnd_offset(gen));
+      // }
+    }
+  }
+
+  // TODO: check if this should be done at a later step i.e a separate System
+  for (auto &particle : m_particles.dense) {
+    if (!particle.active) {
+      DeleteEntity(particle.entity);
+      continue;
+    }
+
+    // update health
+    auto health = Get<HealthComponent>(particle.entity);
+    --health->value;
+
+    if (health->value <= 0.f) {
+      particle.active = false;
+    }
+
+    // else {
+    //   // update pos
+    //   // follow emitter's x
+    //   auto emitter_pos = Get<PositionComponent>(particle.emitter);
+    //   auto pos = Get<PositionComponent>(particle.entity);
+    //   pos->value.x = emitter_pos->value.x + particle.offset;
+    //   // do not allow particle to appear above spaceshifp
+    //   if (emitter_pos->value.y > pos->value.y) {
+    //     pos->value.y = emitter_pos->value.y;
+    //   }
+    // }
+  }
+}
+
 void Registry::ResetSystem() { m_forces.Reset(); }
 
+void Registry::Debug() {
+  int positions = m_positions.dense.size();
+  int renders = m_renders.dense.size();
+  int particles = m_particles.dense.size();
+  int entities = m_entities.size();
+
+  DrawText(TextFormat("e:%i", entities), 10, 60, 20, BLACK);
+  DrawText(TextFormat("p:%i", positions), 10, 80, 20, BLACK);
+  DrawText(TextFormat("r:%i", renders), 10, 100, 20, BLACK);
+  DrawText(TextFormat("cnt:%i", ThreadSafeIdGenerator::getCurrentId()), 10, 120, 20, BLACK);
+  DrawText(TextFormat("pts:%i", particles), 10, 140, 20, BLACK);
+}
 } // namespace ECS
