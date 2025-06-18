@@ -72,15 +72,14 @@ void LoadNextRound() {
 
   Entity healthText = s_Registry->CreateEntity();
   s_Registry->Add<PositionComponent>(healthText, screenX_1_4 - 60.f, centerY - cardH / 2.f + 30.f);
-  s_Registry->Add<TextComponent>(healthText, "+10% Health");
+  s_Registry->Add<TextComponent>(healthText, "+10 Health");
 
   Entity card1Cost = s_Registry->CreateEntity();
   s_Registry->Add<PositionComponent>(card1Cost, screenX_1_4 - 50.f, centerY + cardH / 2.f - 30.f);
   s_Registry->Add<TextComponent>(card1Cost, "$ 3 Cores");
 
   Entity healthBarInc = s_Registry->CreateEntity();
-  float healthInc = 1.1f; // +10%
-  s_Registry->Add<GameStateComponent>(healthBarInc, g_Game.health * healthInc * BAR_SCALE);
+  s_Registry->Add<GameStateComponent>(healthBarInc, (g_Game.health + 1) * BAR_SCALE);
   s_Registry->Add<UIComponent>(healthBarInc, UIElement::BAR, ORANGE);
   s_Registry->Add<PositionComponent>(healthBarInc, screenX_1_4 - 30.f, centerY + 30.f);
 
@@ -124,25 +123,26 @@ void LoadNextRound() {
   s_Registry->Add<RenderComponent>(card3, Layer::SKY, Shape::RECTANGLE, BLACK, cardW, cardH);
   s_Registry->Add<PositionComponent>(card3, posX + 2.f * screenX_1_4, posY);
 
-  // Messages & Status
-  Entity title = s_Registry->CreateEntity();
-  s_Registry->Add<PositionComponent>(title, centerX - 30.f, (centerY - cardH / 2.f) / 2.f);
-  s_Registry->Add<TextComponent>(title, "SHOP");
+  Entity card3Text = s_Registry->CreateEntity();
+  s_Registry->Add<PositionComponent>(card3Text, 3.f * screenX_1_4 - 50.f, centerY - 10.f);
+  s_Registry->Add<TextComponent>(card3Text, "Continue...");
 
-  // Entity status = s_Registry->CreateEntity();
-  posY = centerY + cardH / 2.f;
-  posX = centerX - 60.f;
-  // s_Registry->Add<PositionComponent>(status, posX, posY);
+  // Messages & Status
+  Entity status = s_Registry->CreateEntity();
+  if (Game::IsGameWon()) {
+    posX = centerX - 180.f;
+    s_Registry->Add<TextComponent>(status, "NEW STAGE COMING UP - PREPARE!");
+  } else {
+    posX = centerX - 130.f;
+    s_Registry->Add<TextComponent>(status, "PREPARE & REPLAY STAGE!");
+  }
+  s_Registry->Add<PositionComponent>(status, posX, (centerY - cardH / 2.f) / 2.f);
 
   Entity message = s_Registry->CreateEntity();
+  posY = centerY + cardH / 2.f;
+  posX = centerX - 60.f;
   s_Registry->Add<PositionComponent>(message, posX - 120.f, posY + 50.f);
   s_Registry->Add<TextComponent>(message, "Press SPACE or ENTER to Buy");
-
-  if (Game::IsGameWon()) {
-    // s_Registry->Add<TextComponent>(status, "YOU WIN!");
-  } else {
-    // s_Registry->Add<TextComponent>(status, "YOU LOSE!");
-  }
 }
 
 void UpdateNextRound(float delta) {
@@ -158,9 +158,7 @@ void UpdateNextRound(float delta) {
     selected = 1;
   }
 
-  if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) || IsKeyPressed(KEY_SPACE) ||
-      IsKeyPressed(KEY_ENTER)) {
-
+  if ((IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER)) && Game::Buy(selected)) {
     if (Game::IsGameWon()) {
       Game::NextLevel();
     } else {
@@ -188,6 +186,7 @@ void DrawNextRound() {
 void UnloadNextRound() {
   s_Registry.reset();
   s_Event = SceneEvent::NONE;
+  selected = 1;
 }
 
 SceneEvent OnNextRoundEvent() { return s_Event; }

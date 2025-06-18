@@ -23,11 +23,10 @@ void Game::LoadLevel(int level) {
   g_Game.meteors.count = num_of_s_meteors(gen);
 
   // TODO: should be calculated per upgrade
-  g_Game.fuel_loss_rate = SPACESHIP_INITIAL_FUEL_LOSS_RATE;
+  // g_Game.fuel_loss_rate = SPACESHIP_INITIAL_FUEL_LOSS_RATE;
 
   // Reset
   g_Game.level_cores = 0;
-  g_Game.health = SPACESHIP_INITIAL_HEALTH;
 
   // Reset lives
   if (g_Game.lives == 0) {
@@ -63,6 +62,27 @@ void Game::LoseFuel() {
   g_Game.fuel -= g_Game.fuel_loss_rate;
   if (g_Game.fuel < 0.f) {
     g_Game.fuel = 0.f;
+  }
+}
+
+bool Game::Buy(int product) {
+  switch (product) {
+  case BUY::HEALTH:
+    if (g_Game.total_cores < COST_HEALTH) {
+      return false;
+    }
+    ++g_Game.health;
+    g_Game.total_cores -= COST_HEALTH;
+    return true;
+  case BUY::LIFE:
+    if (g_Game.total_cores < COST_LIFE) {
+      return false;
+    }
+    ++g_Game.lives;
+    g_Game.total_cores -= COST_LIFE;
+    return true;
+  default:
+    return true;
   }
 }
 

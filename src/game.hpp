@@ -22,6 +22,11 @@ constexpr float WEAPON_SIZE = 10.f;
 constexpr float WEAPON_DMG = 1.f;
 constexpr float WEAPON_MAX_DISTANCE = 60.f;
 
+constexpr int COST_HEALTH = 3;
+constexpr int COST_LIFE = 10;
+constexpr int COST_CONTINUE = 0;
+enum BUY { HEALTH = 1, LIFE, CONTINUE };
+
 struct Game {
   int level = 1;
 
@@ -67,6 +72,7 @@ void DmgSpaceship(float dmg);
 void ResetSpaceship();
 void GatherCore();
 void LoseFuel();
+bool Buy(int selection);
 
 // WIP...
 void LoadLevel();
