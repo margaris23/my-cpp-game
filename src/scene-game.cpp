@@ -39,6 +39,7 @@ static GameState s_state = GameState::PLAY;
 // ENTITIES
 static Entity s_spaceshipHealth;
 static Entity s_spaceshipLives;
+static Entity s_spaceshipFuel;
 static Entity s_spaceShip;
 static Entity s_miningBeam;
 static Entity s_beamParticle;
@@ -128,8 +129,9 @@ void LoadGame() {
   // State: Spaceship health (UI Entity)
   s_spaceshipHealth = s_Registry->CreateEntity();
   s_Registry->Add<GameStateComponent>(s_spaceshipHealth, g_Game.health);
-  s_Registry->Add<UIComponent>(s_spaceshipHealth, UIElement::BAR);
+  s_Registry->Add<UIComponent>(s_spaceshipHealth, UIElement::BAR, DARKGREEN);
   s_Registry->Add<PositionComponent>(s_spaceshipHealth, 10.f, 10.f);
+
   // Spaceship Lives (UI Entity)
   s_spaceshipLives = s_Registry->CreateEntity();
   s_Registry->Add<GameStateComponent>(s_spaceshipLives, g_Game.lives);
@@ -137,13 +139,19 @@ void LoadGame() {
   s_Registry->Add<PositionComponent>(s_spaceshipLives,
                                      GetScreenWidth() - MeasureText(" Lives", 20) - 20.f, 10.f);
 
+  // Fuel (UI Entity)
+  // s_spaceshipFuel = s_Registry->CreateEntity();
+  // s_Registry->Add<GameStateComponent>(s_spaceshipFuel, g_Game.fuel);
+  // s_Registry->Add<UIComponent>(s_spaceshipFuel, UIElement::BAR, BLACK);
+  // s_Registry->Add<PositionComponent>(s_spaceshipFuel, 10.f, 30.f);
+
   // Scores (UI Entity)
   s_score = s_Registry->CreateEntity();
   s_Registry->Add<GameStateComponent>(s_score, g_Game.score);
   s_Registry->Add<TextComponent>(s_score, fmt::format("{}", g_Game.score), BROWN);
   s_Registry->Add<PositionComponent>(s_score, screen_cw - 10.f, 10.f);
 
-  // # Cores
+  // # Cores (UI Entity)
   s_coresCount = s_Registry->CreateEntity();
   s_Registry->Add<GameStateComponent>(s_coresCount, g_Game.total_cores);
   s_Registry->Add<TextComponent>(s_coresCount, fmt::format("{} Cores", g_Game.total_cores),
@@ -185,6 +193,13 @@ void UpdateGame(float delta) {
     // Input
     s_Registry->InputSystem();
   }
+
+  // Handle Fuel consumption
+  // if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_LEFT) || IsKeyDown(KEY_UP) || IsKeyDown(KEY_DOWN)) {
+  //   Game::LoseFuel();
+  //   auto fuel = s_Registry->Get<GameStateComponent>(s_spaceshipFuel);
+  //   fuel->value = g_Game.fuel;
+  // }
 
   if (GameState::PAUSE == s_state) {
     return;
@@ -341,7 +356,8 @@ void DrawGame() {
   //   }
   // }
 
-  s_Registry->Debug();
+  // DEBUG
+  // s_Registry->Debug();
 
   // DrawEllipseLines(100.f, 100.f, 20.f, 10.f, BLACK);
 

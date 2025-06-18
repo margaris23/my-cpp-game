@@ -47,7 +47,7 @@ int main(void) {
   // noise.SetFrequency(NOISE_SCALE);
 
   Game::InitGame();
-  LoadScene(Scene::INTRO);
+  LoadScene(Scene::NEXT_ROUND);
 
   // Main game loop
   while (!WindowShouldClose() && !s_AppShouldExit) {

@@ -14,7 +14,10 @@ constexpr float METEOR_MIN_VELOCITY = -.5f;
 constexpr float METEOR_MAX_VELOCITY = .5f;
 
 constexpr float SPACESHIP_INITIAL_HEALTH = 10.f;
+constexpr float SPACESHIP_INITIAL_FUEL = 8.f;
+constexpr float SPACESHIP_INITIAL_FUEL_LOSS_RATE = .01f;
 constexpr float SPACESHIP_INITIAL_LIVES = 3.f;
+
 constexpr float WEAPON_SIZE = 10.f;
 constexpr float WEAPON_DMG = 1.f;
 constexpr float WEAPON_MAX_DISTANCE = 60.f;
@@ -31,6 +34,8 @@ struct Game {
   // Spaceship ???
   int lives = SPACESHIP_INITIAL_LIVES;
   float health = SPACESHIP_INITIAL_HEALTH;
+  float fuel = SPACESHIP_INITIAL_FUEL;
+  float fuel_loss_rate = SPACESHIP_INITIAL_FUEL_LOSS_RATE;
 
   // Per Level Meteor Data
   struct {
@@ -61,6 +66,7 @@ void MineMeteor();
 void DmgSpaceship(float dmg);
 void ResetSpaceship();
 void GatherCore();
+void LoseFuel();
 
 // WIP...
 void LoadLevel();

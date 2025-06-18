@@ -127,10 +127,12 @@ struct ForceComponent {
 struct UIComponent {
   UIElement type;
   Entity entity;
-  std::optional<Entity> selectedEntity;
+  Color color;
+  // std::optional<Entity> selectedEntity;
   explicit UIComponent(UIElement type) : type(type) {}
-  explicit UIComponent(UIElement type, Entity selectedEntity)
-      : type(type), selectedEntity(selectedEntity) {}
+  explicit UIComponent(UIElement type, Color color) : type(type), color(color) {}
+  // explicit UIComponent(UIElement type, Entity selectedEntity)
+  //     : type(type), selectedEntity(selectedEntity) {}
   ~UIComponent() = default;
   UIComponent(const UIComponent &other) = delete;
   UIComponent(UIComponent &&other) noexcept = default;

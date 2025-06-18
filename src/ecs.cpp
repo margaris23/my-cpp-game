@@ -210,23 +210,25 @@ void Registry::UISystem() {
   for (auto &widget : m_widgets.dense) {
     auto widgetPos = m_positions.Get(widget.entity);
 
-    // Handle selected widget logic ... Like a focus
-    if (widget.selectedEntity.has_value()) {
-      auto selectedWidgetPos = m_positions.Get(widget.selectedEntity.value());
+    // // Handle selected widget logic ... Like a focus
+    // if (widget.selectedEntity.has_value()) {
+    //   auto selectedWidgetPos = m_positions.Get(widget.selectedEntity.value());
+    //
+    //   if (widgetPos && selectedWidgetPos) {
+    //     widgetPos->value.x = selectedWidgetPos->value.x;
+    //     widgetPos->value.y = selectedWidgetPos->value.y;
+    //   }
+    //   // ECS::Add<ECS::PositionComponent>(s_SelectedBtn, H_CenterText("New Game") -
+    //   // padding, 100.f - padding); ECS::Add<ECS::eenderComponent>(s_SelectedBtn,
+    //   // textWidth + 2.f * padding, 20.f + 2 * padding);  // Rectangle
+    // } else
 
-      if (widgetPos && selectedWidgetPos) {
-        widgetPos->value.x = selectedWidgetPos->value.x;
-        widgetPos->value.y = selectedWidgetPos->value.y;
-      }
-      // ECS::Add<ECS::PositionComponent>(s_SelectedBtn, H_CenterText("New Game") -
-      // padding, 100.f - padding); ECS::Add<ECS::eenderComponent>(s_SelectedBtn,
-      // textWidth + 2.f * padding, 20.f + 2 * padding);  // Rectangle
-    } else if (UIElement::BAR == widget.type) {
+    if (UIElement::BAR == widget.type) {
       const auto state = m_stateValues.Get(widget.entity);
       if (state) {
         std::visit(
-            [widgetPos](auto &&val) {
-              DrawRectangle(widgetPos->value.x, widgetPos->value.y, val * 10, 20, BLACK);
+            [&widgetPos, &widget](auto &&val) {
+              DrawRectangle(widgetPos->value.x, widgetPos->value.y, val * 10, 20, widget.color);
             },
             state->value);
       }

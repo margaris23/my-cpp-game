@@ -10,7 +10,6 @@ Game::Game g_Game;
 void Game::InitGame() {
   std::uniform_int_distribution<int> num_of_s_meteors(g_Game.meteors.min_meteors,
                                                       g_Game.meteors.max_meteors);
-
   g_Game.meteors.count = num_of_s_meteors(gen);
 }
 
@@ -22,6 +21,9 @@ void Game::LoadLevel(int level) {
   std::uniform_int_distribution<int> num_of_s_meteors(g_Game.meteors.min_meteors,
                                                       g_Game.meteors.max_meteors);
   g_Game.meteors.count = num_of_s_meteors(gen);
+
+  // TODO: should be calculated per upgrade
+  g_Game.fuel_loss_rate = SPACESHIP_INITIAL_FUEL_LOSS_RATE;
 
   // Reset
   g_Game.level_cores = 0;
@@ -55,6 +57,13 @@ void Game::DmgSpaceship(float dmg) {
 void Game::GatherCore() {
   ++g_Game.total_cores;
   ++g_Game.level_cores;
+}
+
+void Game::LoseFuel() {
+  g_Game.fuel -= g_Game.fuel_loss_rate;
+  if (g_Game.fuel < 0.f) {
+    g_Game.fuel = 0.f;
+  }
 }
 
 bool Game::IsGameWon() { return g_Game.meteors.count == g_Game.level_cores; }
