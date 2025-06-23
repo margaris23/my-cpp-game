@@ -5,6 +5,7 @@
 #include <cmath>
 #include <iostream>
 #include <ostream>
+#include "resource_dir.h"
 
 #if defined(PLATFORM_WEB)
 #include <emscripten/emscripten.h>
@@ -36,6 +37,7 @@ FastNoiseLite noise;
 int main(void) {
   InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "MINOIDS");
   SetExitKey(KEY_NULL); // disable Esc key
+  SearchAndSetResourceDir("resources");
   InitAudioDevice();
 
 #if defined(PLATFORM_WEB)

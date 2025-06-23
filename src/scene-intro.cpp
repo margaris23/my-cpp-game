@@ -10,16 +10,16 @@ static SceneEvent s_Event = SceneEvent::NONE;
 
 static std::unique_ptr<ECS::Registry> s_Registry;
 
-using ECS::PositionComponent, ECS::TextComponent, ECS::Entity;
+using ECS::PositionComponent, ECS::SpriteComponent, ECS::Layer, ECS::Entity;
 
 void LoadIntro() {
   s_Registry = std::make_unique<ECS::Registry>();
 
-  float posX = (float)(GetScreenWidth() - MeasureText("MINOIDS", 20)) / 2.f;
-  float posY = (float)GetScreenHeight() / 2.f;
-  auto Title = s_Registry->CreateEntity();
-  s_Registry->Add<TextComponent>(Title, "Minoids");
-  s_Registry->Add<PositionComponent>(Title, posX, posY);
+  float posX = (float)GetScreenWidth() / 2.f - 218.f;
+  float posY = (float)GetScreenHeight() / 2.f - 46.f;
+  auto title = s_Registry->CreateEntity();
+  s_Registry->Add<SpriteComponent>(title, Layer::SKY, "minoids_logo.png");
+  s_Registry->Add<PositionComponent>(title, posX, posY);
 }
 
 void UpdateIntro(float delta) {
@@ -39,8 +39,6 @@ void UnloadIntro() {
   s_Event = SceneEvent::NONE;
 }
 
-void SetIntroFocus() {
-  s_Event = SceneEvent::NONE;
-}
+void SetIntroFocus() { s_Event = SceneEvent::NONE; }
 
 SceneEvent OnIntroEvent() { return s_Event; }

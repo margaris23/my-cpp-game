@@ -190,11 +190,18 @@ struct RenderComponent {
 struct SpriteComponent {
   Texture2D texture;
   Layer priority;
+  float scale;
   Entity entity;
   bool m_owns_texture; // RAII for the texture
 
-  explicit SpriteComponent(Layer priority, std::string_view filename) : priority(priority) {
-    texture = LoadTexture(fmt::format(ASSETS_PATH "/{}", filename).data());
+  explicit SpriteComponent(Layer priority, std::string filename)
+      : priority(priority), scale(1.f) {
+    texture = LoadTexture(filename.c_str());
+    m_owns_texture = true;
+  }
+  explicit SpriteComponent(Layer priority, std::string filename, float scale)
+      : priority(priority), scale(scale) {
+    texture = LoadTexture(filename.c_str());
     m_owns_texture = true;
   }
 
@@ -210,7 +217,7 @@ struct SpriteComponent {
   // safe MOVE Semantics due to Texture
   SpriteComponent(SpriteComponent &&other) noexcept
       : texture(other.texture), m_owns_texture(true), priority(std::move(other.priority)),
-        entity(std::move(other.entity)) {
+        scale(std::move(other.scale)), entity(std::move(other.entity)) {
     other.m_owns_texture = false;
   }
 

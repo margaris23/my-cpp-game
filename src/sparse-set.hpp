@@ -9,7 +9,7 @@
 
 // allocate enough memory to support large number of particles
 static constexpr int INITIAL_ELEMENTS = 5000;
-static constexpr size_t EMPTY = ULONG_LONG_MAX - 1;
+static constexpr size_t EMPTY = ULLONG_MAX - 1;
 
 template <typename T> class SparseSet {
 public:

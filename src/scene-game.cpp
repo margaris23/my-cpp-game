@@ -63,9 +63,9 @@ void LoadGame() {
   s_Registry->Init();
 
   // Randomizers
-  std::uniform_real_distribution<float> rnd_x(meteors_offset, GetScreenWidth() - meteors_offset);
-  std::uniform_real_distribution<float> rnd_y(meteors_offset, GetScreenHeight() - meteors_offset);
-  std::uniform_real_distribution<float> rnd_size(g_Game.meteors.min_meteor_size,
+  std::uniform_real_distribution<float> rnd_x(meteors_offset, (float)GetScreenWidth() - meteors_offset);
+  std::uniform_real_distribution<float> rnd_y(meteors_offset, (float)GetScreenHeight() - meteors_offset);
+  std::uniform_int_distribution<int> rnd_size(g_Game.meteors.min_meteor_size,
                                                  g_Game.meteors.max_meteor_size);
   std::uniform_real_distribution<float> rnd_velocity(g_Game.meteors.meteor_min_velocity,
                                                      g_Game.meteors.meteor_max_velocity);
@@ -102,7 +102,7 @@ void LoadGame() {
     float posY = rnd_y(gen);
     float velX = rnd_velocity(gen);
     float velY = rnd_velocity(gen);
-    float radius = rnd_size(gen);
+    float radius = (float)rnd_size(gen);
 
     // Meteor Core
     s_cores.push_back(s_Registry->CreateEntity());
