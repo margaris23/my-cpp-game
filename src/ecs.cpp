@@ -309,14 +309,15 @@ void Registry::RenderSystem() {
     }
   }
 
+  // SPRITES
   for (auto &sprite : m_sprites.dense) {
     const auto pos = m_positions.Get(sprite.entity);
     // Anchor point is center of texture
     // DrawTexture(sprite.texture, pos->value.x - sprite.texture.width / 2.f,
     //             pos->value.y - sprite.texture.height / 2.f, WHITE);
 
-    DrawTexture(sprite.texture, pos->value.x, pos->value.y, WHITE);
-    // DrawTextureEx(sprite.texture, {pos->value.x, pos->value.y}, 0, 1.f, WHITE);
+    // DrawTexture(sprite.texture, pos->value.x, pos->value.y, WHITE);
+    DrawTextureEx(sprite.texture, {pos->value.x, pos->value.y}, 0, sprite.scale, WHITE);
 
     // Rectangle source{0, 0, (float)sprite.texture.width, (float)sprite.texture.height};
     // Rectangle dest{pos->value.x, pos->value.y, (float)sprite.texture.width,
