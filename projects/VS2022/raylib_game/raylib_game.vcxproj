@@ -195,10 +195,11 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN32;_DEBUG;_CONSOLE;PLATFORM_DESKTOP;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN32;_DEBUG;_CONSOLE;PLATFORM_DESKTOP;%(PreprocessorDefinitions);ASSETS_PATH="src/resources"</PreprocessorDefinitions>
       <CompileAs>Default</CompileAs>
       <AdditionalIncludeDirectories>$(SolutionDir)..\..\src;$(SolutionDir)..\..\src\external;$(SolutionDir)..\..\..\raylib\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <AdditionalOptions>/FS %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/FS /utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -281,12 +282,14 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN32;NDEBUG;_CONSOLE;PLATFORM_DESKTOP;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN32;NDEBUG;_CONSOLE;PLATFORM_DESKTOP;%(PreprocessorDefinitions);ASSETS_PATH="src/resources"</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(SolutionDir)..\..\src;$(SolutionDir)..\..\src\external;$(SolutionDir)..\..\..\raylib\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <CompileAs>Default</CompileAs>
       <RemoveUnreferencedCodeData>true</RemoveUnreferencedCodeData>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -359,15 +362,22 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\..\src\screens.h" />
+    <ClInclude Include="..\..\..\src\ecs.hpp" />
+    <ClInclude Include="..\..\..\src\game.hpp" />
+    <ClInclude Include="..\..\..\src\scenes.hpp" />
+    <ClInclude Include="..\..\..\src\reasings.h" />
+    <ClInclude Include="..\..\..\src\FastNoiseLite.h" />
+    <ClInclude Include="..\..\..\src\sparse-set.hpp" />
+    <ClInclude Include="..\..\..\src\resource_dir.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\src\raylib_game.c" />
-    <ClCompile Include="..\..\..\src\screen_logo.c" />
-    <ClCompile Include="..\..\..\src\screen_title.c" />
-    <ClCompile Include="..\..\..\src\screen_options.c" />
-    <ClCompile Include="..\..\..\src\screen_gameplay.c" />
-    <ClCompile Include="..\..\..\src\screen_ending.c" />
+    <ClCompile Include="..\..\..\src\minoids.cpp" />
+    <ClCompile Include="..\..\..\src\ecs.cpp" />
+    <ClCompile Include="..\..\..\src\game.cpp" />
+    <ClCompile Include="..\..\..\src\scene-intro.cpp" />
+    <ClCompile Include="..\..\..\src\scene-menu.cpp" />
+    <ClCompile Include="..\..\..\src\scene-game.cpp" />
+    <ClCompile Include="..\..\..\src\scene-next-round.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\..\..\src\raylib_game.rc" />

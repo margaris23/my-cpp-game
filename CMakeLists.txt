@@ -22,14 +22,16 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(raylib)
 
 FetchContent_Declare(
-  fmt
-  GIT_REPOSITORY https://github.com/fmtlib/fmt
-  GIT_TAG        e69e5f977d458f2650bb346dadf2ad30c5320281) # 10.2.1
+ fmt
+ GIT_REPOSITORY https://github.com/fmtlib/fmt
+ GIT_TAG        e69e5f977d458f2650bb346dadf2ad30c5320281) # 10.2.1
 FetchContent_MakeAvailable(fmt)
 
+# find_package(fmt)
+
 # Print debug information
-get_target_property(FMT_INCLUDE_DIRS fmt INTERFACE_INCLUDE_DIRECTORIES)
-message(STATUS "fmt include directories: ${FMT_INCLUDE_DIRS}")
+#get_target_property(FMT_INCLUDE_DIRS fmt INTERFACE_INCLUDE_DIRECTORIES)
+#message(STATUS "fmt include directories: ${FMT_INCLUDE_DIRS}")
 
 # Our Project
 add_executable(${PROJECT_NAME})

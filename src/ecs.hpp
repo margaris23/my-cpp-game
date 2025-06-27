@@ -194,14 +194,14 @@ struct SpriteComponent {
   Entity entity;
   bool m_owns_texture; // RAII for the texture
 
-  explicit SpriteComponent(Layer priority, std::string_view filename)
+  explicit SpriteComponent(Layer priority, std::string filename)
       : priority(priority), scale(1.f) {
-    texture = LoadTexture(fmt::format(ASSETS_PATH "/{}", filename).data());
+    texture = LoadTexture(filename.c_str());
     m_owns_texture = true;
   }
-  explicit SpriteComponent(Layer priority, std::string_view filename, float scale)
+  explicit SpriteComponent(Layer priority, std::string filename, float scale)
       : priority(priority), scale(scale) {
-    texture = LoadTexture(fmt::format(ASSETS_PATH "/{}", filename).data());
+    texture = LoadTexture(filename.c_str());
     m_owns_texture = true;
   }
 
