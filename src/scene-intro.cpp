@@ -10,7 +10,8 @@ static SceneEvent s_Event = SceneEvent::NONE;
 
 static std::unique_ptr<ECS::Registry> s_Registry;
 
-using ECS::PositionComponent, ECS::SpriteComponent, ECS::Layer, ECS::Entity;
+using ECS::PositionComponent, ECS::SpriteComponent, ECS::SoundComponent, ECS::SoundType, ECS::Layer,
+    ECS::Entity;
 
 void LoadIntro() {
   s_Registry = std::make_unique<ECS::Registry>();
@@ -20,6 +21,11 @@ void LoadIntro() {
   auto title = s_Registry->CreateEntity();
   s_Registry->Add<SpriteComponent>(title, Layer::SKY, "minoids_logo.png");
   s_Registry->Add<PositionComponent>(title, posX, posY);
+
+  auto soundBkg = s_Registry->CreateEntity();
+  s_Registry->Add<SoundComponent>(soundBkg, SoundType::STREAM, "bkg.mp3");
+  const auto& sound = s_Registry->Get<SoundComponent>(soundBkg);
+  PlayMusicStream(sound->music);
 }
 
 void UpdateIntro(float delta) {
@@ -30,6 +36,7 @@ void UpdateIntro(float delta) {
   }
 
   s_Registry->PositionSystem();
+  s_Registry->SoundSystem();
 }
 
 void DrawIntro() { s_Registry->RenderSystem(); }

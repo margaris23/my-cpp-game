@@ -2,6 +2,7 @@
 #define ECS_H
 
 #include "FastNoiseLite.h"
+#include "events.hpp"
 #include "fmt/core.h"
 #include "fmt/format.h"
 #include "raylib.h"
@@ -65,6 +66,7 @@ enum class UIElement {
   BAR,
 };
 enum class Layer : uint8_t { SUB, GROUND, SKY };
+enum class SoundType : uint8_t { SIMPLE, STREAM };
 
 // static ComponentGroups groups; // Mask -> SparseSet<Components>
 
@@ -239,6 +241,66 @@ struct SpriteComponent {
   }
 };
 
+struct SoundComponent {
+  Sound sound;
+  Music music;
+  SoundType type;
+  Entity entity;
+  bool m_owns_resource; // RAII for resource
+
+  explicit SoundComponent(SoundType type, std::string_view filename) : type(type) {
+    if (SoundType::SIMPLE == type) {
+      sound = LoadSound(fmt::format(ASSETS_PATH "/{}", filename).data());
+    } else {
+      music = LoadMusicStream(fmt::format(ASSETS_PATH "/{}", filename).data());
+    }
+    m_owns_resource = true;
+  }
+
+  ~SoundComponent() {
+    if (m_owns_resource) {
+      if (SoundType::SIMPLE == type) {
+        StopSound(sound);
+        UnloadSound(sound);
+      } else {
+        StopMusicStream(music);
+        UnloadMusicStream(music);
+      }
+    }
+  }
+
+  SoundComponent(const SoundComponent &other) = delete;
+  SoundComponent &operator=(const SoundComponent &other) = delete;
+
+  // safe MOVE Semantics due to Texture
+  SoundComponent(SoundComponent &&other) noexcept
+      : sound(other.sound), music(other.music), type(other.type), m_owns_resource(true),
+        entity(std::move(other.entity)) {
+    other.m_owns_resource = false;
+  }
+
+  SoundComponent &operator=(SoundComponent &&rhs) noexcept {
+    if (this != &rhs) {
+      if (m_owns_resource) {
+        if (SoundType::SIMPLE == type) {
+          UnloadSound(sound);
+        } else {
+          UnloadMusicStream(music);
+        }
+      } else {
+        rhs.m_owns_resource = false;
+        m_owns_resource = true;
+      }
+      sound = rhs.sound;
+      music = rhs.music;
+      type = std::move(rhs.type);
+      entity = std::move(rhs.entity);
+    }
+
+    return *this;
+  }
+};
+
 struct HealthComponent {
   float value;
   Entity entity;
@@ -336,6 +398,8 @@ public:
   Registry() = default;
   ~Registry();
 
+  EventBus m_bus;
+  
   Entity CreateEntity();
 
   void Init();
@@ -348,6 +412,7 @@ public:
   void CollisionDetectionSystem();
   void CollisionResolutionSystem();
   void ParticleSystem();
+  void SoundSystem();
 
   void Debug();
 
@@ -386,6 +451,8 @@ public:
       return m_emitters.Add(entity, std::move(component));
     } else if constexpr (std::is_same_v<T, ParticleComponent>) {
       return m_particles.Add(entity, std::move(component));
+    } else if constexpr (std::is_same_v<T, SoundComponent>) {
+      return m_sounds.Add(entity, std::move(component));
     }
 
     return false;
@@ -422,6 +489,8 @@ public:
       m_emitters.Remove(entity);
     } else if constexpr (std::is_same_v<T, ParticleComponent>) {
       m_particles.Remove(entity);
+    } else if constexpr (std::is_same_v<T, SoundComponent>) {
+      m_sounds.Remove(entity);
     }
   }
 
@@ -456,6 +525,8 @@ public:
       return m_emitters.Get(entity);
     } else if constexpr (std::is_same_v<T, ParticleComponent>) {
       return m_particles.Get(entity);
+    } else if constexpr (std::is_same_v<T, SoundComponent>) {
+      return m_sounds.Get(entity);
     }
 
     return nullptr;
@@ -482,6 +553,7 @@ private:
   SparseSet<InputComponent> m_inputs;
   SparseSet<EmitterComponent> m_emitters;
   SparseSet<ParticleComponent> m_particles;
+  SparseSet<SoundComponent> m_sounds;
 
   void CleanupEntity(Entity entity);
 

@@ -11,7 +11,8 @@ static SceneEvent s_Event = SceneEvent::NONE;
 static std::unique_ptr<ECS::Registry> s_Registry;
 
 using ECS::PositionComponent, ECS::TextComponent, ECS::RenderComponent, ECS::Shape, ECS::Layer,
-    ECS::GameStateComponent, ECS::SpriteComponent, ECS::UIComponent, ECS::UIElement, ECS::Entity;
+    ECS::SoundComponent, ECS::SoundType, ECS::GameStateComponent, ECS::SpriteComponent,
+    ECS::UIComponent, ECS::UIElement, ECS::Entity;
 
 extern Game::Game g_Game;
 
@@ -29,6 +30,7 @@ constexpr int EARN_HEALTH_COST = 3; // cores
 Entity s_selectionBottom;
 Entity s_selectionTop;
 Entity s_coresCount;
+Entity s_navigateSound;
 
 void LoadNextRound() {
   s_Registry = std::make_unique<ECS::Registry>();
@@ -143,13 +145,31 @@ void LoadNextRound() {
   posX = centerX - 60.f;
   s_Registry->Add<PositionComponent>(message, posX - 120.f, posY + 50.f);
   s_Registry->Add<TextComponent>(message, "Press SPACE or ENTER to Buy");
+
+  // SOUND - Menu Navigate
+  s_navigateSound = s_Registry->CreateEntity();
+  s_Registry->Add<SoundComponent>(s_navigateSound, SoundType::SIMPLE, "navigate.ogg");
+  s_Registry->m_bus.Add("navigate", []() {
+    const auto soundComp = s_Registry->Get<SoundComponent>(s_navigateSound);
+    PlaySound(soundComp->sound);
+  });
+
+  // SOUND - Menu Confirm
+  Entity confirmSound = s_Registry->CreateEntity();
+  s_Registry->Add<SoundComponent>(confirmSound, SoundType::SIMPLE, "confirm.ogg");
+  s_Registry->m_bus.Add("confirm", [confirmSound]() {
+    const auto soundComp = s_Registry->Get<SoundComponent>(confirmSound);
+    PlaySound(soundComp->sound);
+  });
 }
 
 void UpdateNextRound(float delta) {
   if (IsKeyPressed(KEY_LEFT)) {
     --selected;
+    s_Registry->m_bus.Trigger("navigate");
   } else if (IsKeyPressed(KEY_RIGHT)) {
     ++selected;
+    s_Registry->m_bus.Trigger("navigate");
   }
 
   if (selected < 1) {
@@ -159,6 +179,7 @@ void UpdateNextRound(float delta) {
   }
 
   if ((IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER)) && Game::Buy(selected)) {
+    s_Registry->m_bus.Trigger("confirm");
     if (Game::IsGameWon()) {
       Game::NextLevel();
     } else {

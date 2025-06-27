@@ -50,6 +50,7 @@ void Registry::CleanupEntity(Entity entity) {
   Remove<InputComponent>(entity);
   Remove<EmitterComponent>(entity);
   Remove<ParticleComponent>(entity);
+  Remove<SoundComponent>(entity);
 }
 
 void Registry::DeleteEntity(Entity entity) {
@@ -406,6 +407,8 @@ void Registry::InputSystem() {
 
       Add<RenderComponent>(miningBeam, Layer::GROUND, Shape::RECTANGLE, BROWN, Game::WEAPON_SIZE,
                            10.f);
+      m_bus.Trigger("weapon_fire"); // TODO: use constexpr ???
+
     } else {
       auto beam_collider = Get<ColliderComponent>(miningBeam);
 
@@ -437,6 +440,7 @@ void Registry::InputSystem() {
     // }
     Remove<RenderComponent>(miningBeam);
     Remove<ColliderComponent>(miningBeam);
+    m_bus.Trigger("weapon_stop"); // TODO: use constexpr ???
   }
 }
 
@@ -500,6 +504,14 @@ void Registry::ParticleSystem() {
     //     pos->value.y = emitter_pos->value.y;
     //   }
     // }
+  }
+}
+
+void Registry::SoundSystem() {
+  for (auto &sound : m_sounds.dense) {
+    if (SoundType::STREAM == sound.type) {
+      UpdateMusicStream(sound.music);
+    }
   }
 }
 

@@ -15,10 +15,13 @@ static struct MenuState {
 
 constexpr static float PADDING = 10.f;
 
+using ECS::Entity, ECS::SoundComponent, ECS::SoundType, ECS::PositionComponent,
+    ECS::RenderComponent, ECS::TextComponent, ECS::Layer, ECS::Shape;
+
 static std::unique_ptr<ECS::Registry> s_Registry;
 static std::vector<ButtonConfig> s_buttonConfigs;
 
-static ECS::Entity s_SelectedBtn;
+static Entity s_SelectedBtn;
 
 // Get PosX of Horizontally Screen centered text
 static float H_CenterText(const std::string_view &text) {
@@ -32,8 +35,6 @@ void LoadMenu(std::vector<ButtonConfig> &&config) {
   s_buttonConfigs = std::move(config);
 
   s_Registry = std::make_unique<ECS::Registry>();
-
-  using ECS::PositionComponent, ECS::RenderComponent, ECS::TextComponent, ECS::Layer, ECS::Shape;
 
   // Menu Stylistic Entities
   float menu_height = (s_buttonConfigs.size() - 1) * 50.f + 25.f;
@@ -66,6 +67,14 @@ void LoadMenu(std::vector<ButtonConfig> &&config) {
     ++btn_index;
   }
 
+  // SOUND - MENU NAVIGATE
+  Entity navigateSound = s_Registry->CreateEntity();
+  s_Registry->Add<SoundComponent>(navigateSound, SoundType::SIMPLE, "navigate.ogg");
+  s_Registry->m_bus.Add("navigate", [navigateSound]() {
+    const auto soundComp = s_Registry->Get<ECS::SoundComponent>(navigateSound);
+    PlaySound(soundComp->sound);
+  });
+
   // UPDATE MENU STATE
   s_State.selected = 0;
   s_State.loaded = true;
@@ -80,8 +89,10 @@ void UpdateMenu(float delta) {
     s_Event = SceneEvent::CONTINUE;
   } else if (IsKeyPressed(KEY_DOWN)) {
     mod = 1;
+    s_Registry->m_bus.Trigger("navigate");
   } else if (IsKeyPressed(KEY_UP)) {
     mod = -1;
+    s_Registry->m_bus.Trigger("navigate");
   } else if (IsKeyPressed(KEY_ENTER)) {
     s_Event = s_buttonConfigs[s_State.selected].second;
     return;

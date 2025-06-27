@@ -25,7 +25,8 @@ static std::unique_ptr<ECS::Registry> s_Registry;
 using ECS::PositionComponent, ECS::RenderComponent, ECS::TextComponent, ECS::VelocityComponent,
     ECS::GameStateComponent, ECS::UIComponent, ECS::ForceComponent, ECS::DmgComponent,
     ECS::ColliderComponent, ECS::WeaponComponent, ECS::HealthComponent, ECS::SpriteComponent,
-    ECS::EmitterComponent, ECS::UIElement, ECS::Entity, ECS::Layer, ECS::Shape;
+    ECS::EmitterComponent, ECS::SoundComponent, ECS::UIElement, ECS::Entity, ECS::Layer, ECS::Shape,
+    ECS::SoundType;
 
 // ENTROPY
 static std::random_device rd;
@@ -43,7 +44,8 @@ static Entity s_spaceshipLives;
 static Entity s_spaceshipFuel;
 static Entity s_spaceShip;
 static Entity s_miningBeam;
-static Entity s_beamParticle;
+// static Entity s_beamParticle;
+static Entity s_miningSound;
 static Entity s_score;
 static Entity s_coresCount;
 static Entity s_level;
@@ -91,6 +93,23 @@ void LoadGame() {
   // s_Registry->Add<EmitterComponent>(s_miningBeam, 15 /* emmission rate */,
   //                                   50 /* particle lifetime */, Shape::LINE,
   //                                   Vector2{0.f, 1.f} /* particle velocity */);
+
+  // SOUND - MINING
+  // Do I need SoundComponent here???
+  s_miningSound = s_Registry->CreateEntity();
+  s_Registry->Add<SoundComponent>(s_miningSound, SoundType::STREAM, "drill.mp3");
+  const auto soundComp = s_Registry->Get<SoundComponent>(s_miningSound);
+  soundComp->music.looping = false;
+
+  s_Registry->m_bus.Add("weapon_fire", []() {
+    const auto soundComp = s_Registry->Get<SoundComponent>(s_miningSound);
+    // StopMusicStream(soundComp->music);
+    PlayMusicStream(soundComp->music);
+  });
+  s_Registry->m_bus.Add("weapon_stop", []() {
+    const auto soundComp = s_Registry->Get<SoundComponent>(s_miningSound);
+    StopMusicStream(soundComp->music);
+  });
 
   // Generate Meteors
   s_meteors = std::vector<Entity>();
@@ -165,6 +184,20 @@ void LoadGame() {
   s_Registry->Add<TextComponent>(s_level, fmt::format("L {}", g_Game.level), DARKBLUE);
   s_Registry->Add<PositionComponent>(s_level, 140.f, 10.f);
 
+  // Sound - BKG
+  Entity soundBkg = s_Registry->CreateEntity();
+  s_Registry->Add<SoundComponent>(soundBkg, SoundType::STREAM, "bkg.mp3");
+  const auto& sound = s_Registry->Get<SoundComponent>(soundBkg);
+  PlayMusicStream(sound->music);
+
+  // Sound - Collect
+  Entity soundCollect = s_Registry->CreateEntity();
+  s_Registry->Add<SoundComponent>(soundCollect, SoundType::SIMPLE, "collect.ogg");
+  s_Registry->m_bus.Add("collect", [soundCollect]() {
+    const auto soundComp = s_Registry->Get<SoundComponent>(soundCollect);
+    PlaySound(soundComp->sound);
+  });
+
   s_IsFocused = true;
 }
 
@@ -202,6 +235,8 @@ void UpdateGame(float delta) {
   //   fuel->value = g_Game.fuel;
   // }
 
+  s_Registry->SoundSystem();
+
   if (GameState::PAUSE == s_state) {
     return;
   }
@@ -232,6 +267,7 @@ void UpdateGame(float delta) {
     if (collider && collider->collided_with.has_value()) {
       Game::GatherCore();
       cores_count->value = g_Game.total_cores;
+      s_Registry->m_bus.Trigger("collect");
     }
   }
   auto coresCount_text = s_Registry->Get<TextComponent>(s_coresCount);
