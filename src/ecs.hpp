@@ -248,11 +248,11 @@ struct SoundComponent {
   Entity entity;
   bool m_owns_resource; // RAII for resource
 
-  explicit SoundComponent(SoundType type, std::string_view filename) : type(type) {
+  explicit SoundComponent(SoundType type, std::string filename) : type(type) {
     if (SoundType::SIMPLE == type) {
-      sound = LoadSound(fmt::format(ASSETS_PATH "/{}", filename).data());
+      sound = LoadSound(filename.c_str());
     } else {
-      music = LoadMusicStream(fmt::format(ASSETS_PATH "/{}", filename).data());
+      music = LoadMusicStream(filename.c_str());
     }
     m_owns_resource = true;
   }

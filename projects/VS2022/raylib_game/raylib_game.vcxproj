@@ -369,11 +369,13 @@
     <ClInclude Include="..\..\..\src\FastNoiseLite.h" />
     <ClInclude Include="..\..\..\src\sparse-set.hpp" />
     <ClInclude Include="..\..\..\src\resource_dir.h" />
+    <ClInclude Include="..\..\..\src\events.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\src\minoids.cpp" />
     <ClCompile Include="..\..\..\src\ecs.cpp" />
     <ClCompile Include="..\..\..\src\game.cpp" />
+    <ClCompile Include="..\..\..\src\events.cpp" />
     <ClCompile Include="..\..\..\src\scene-intro.cpp" />
     <ClCompile Include="..\..\..\src\scene-menu.cpp" />
     <ClCompile Include="..\..\..\src\scene-game.cpp" />
